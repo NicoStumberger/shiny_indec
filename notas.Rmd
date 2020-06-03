@@ -1,0 +1,167 @@
+---
+title: "Notas"
+output: html_notebook
+author: Nicolas Stumberger
+date: 2020-05-04
+---
+
+
+Este notebook es para ir anotando y testeando codigos para la app de shiny sobre las expo en base a INDEC.
+
+Falta:
+
+0. Solucionar los NA de las categorias OMC. Crear un solo dataset completo? y luego ir filtrando desde ahi para lo q necesite?
+
+
+
+1. Calcular variaciones internanuales por categoria y subcategoria
+
+```{r}
+
+```
+
+
+
+2. Calcular variaciones por pais (usar el otro dataset de INDEC)
+3. Probar graficos de inclinacion para mostrar variaciones entre un ano y el otro
+4. Probar mapas para destinos.
+
+```{r}
+library(leaflet)
+library(leaflet.providers)
+library(spData) # tiene dataset world con los multipolygons de todos los paises
+
+summary(world$pop) 
+
+bins <- c(0, 5.630e+04, 3.755e+06, 1.040e+07, 3.075e+07, Inf)
+pal <- colorBin(palette = "Blues", domain = world$pop, bins = 6, pretty = FALSE)
+qpal <- colorQuantile("Blues", domain = world$pop, n = 7)
+
+
+m <- leaflet(data = world, 
+             options = leafletOptions(minZoom = 1.5, maxZoom = 18)) %>%
+  addPolygons(color = "#444444", 
+                    weight = 1, 
+                    smoothFactor = 0.5, 
+                    opacity = 1.0, 
+                    fillOpacity = 0.5,
+                    fillColor = ~pal(pop), # aca debe ir una fc para darle peso
+                    highlightOptions = highlightOptions(color = "white", 
+                                                        weight = 2,
+                                                        bringToFront = TRUE))
+
+
+labels <- sprintf(
+  "<strong>%s</strong><br/>%g pobl total",
+  world$name_long, world$pop / 1000000) %>% 
+  lapply(htmltools::HTML)
+
+m <- m %>% 
+  addPolygons(
+    color = "#444444", 
+                    weight = 1, 
+                    smoothFactor = 0.5, 
+                    opacity = 1.0, 
+                    fillOpacity = 0.5,
+                    fillColor = ~qpal(pop), # aca debe ir una fc para darle peso
+                    highlightOptions = highlightOptions(color = "white", 
+                                                        weight = 2,
+                                                        bringToFront = TRUE),
+    label = labels, labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px", direction = "auto")
+    )
+
+m <- m %>% addLegend(pal = pal, values = ~pop, opacity = 0.7, title = NULL,
+  position = "bottomright")
+
+```
+
+
+```{r}
+
+```
+
+5. Probar un grafico de lineas con la evolucion mensual de 10 anos atras en gris y la linea de ano actual en color resaltado.
+
+```{r}
+## Primero leer los datasets historicos y con rbindearlos en uno solo (incluyendo el ultimo ano)
+
+library(tidyverse)
+library(readr)
+library(readxl)
+library(here)
+
+dic_omc <- readRDS(here("data/hs_omc.RDS"))
+
+dic_paises <- read_excel("data/paises.xls", skip = 3) %>% 
+    janitor::clean_names() %>% 
+    filter(!is.na(codigo))
+
+files <- list.files(path = "data/historico/", pattern = ".csv", full.names = TRUE)
+
+
+hist <- sapply(X = files, 
+              FUN = read_delim,
+              ";",
+              skip = 1,
+              col_names = FALSE,
+              escape_double = FALSE,
+              locale = locale(decimal_mark = ",", grouping_mark = "."),
+              trim_ws = TRUE,
+              simplify = FALSE) %>% 
+  bind_rows(.id = NULL) %>% 
+  rename(ano = X1,
+         mes = X2,
+         ncm = X3,
+         pdes = X4,
+         pnet_kg = X5,
+         fob = X6) %>% 
+  as_tibble() %>%
+  mutate(hs6 = str_sub(string = ncm, start = 1, end = 6))
+
+hist$ano <- as.integer(hist$ano)
+hist$mes <- as.integer(hist$mes)
+hist$pdes <- as.character(hist$pdes)
+
+hist <- hist %>% 
+    left_join(dic_omc, by = c("hs6" = "from_hs_2017"))
+
+hist <- hist %>% 
+    left_join(dic_paises, by = c("pdes" = "codigo"))
+
+skimr::skim(hist)
+
+```
+
+```{r}
+## como armamos el grafico
+
+
+g <- hist %>% 
+  filter(ano < max(ano)) %>% 
+  group_by(ano, mes) %>% 
+  summarise(fob = sum(fob))
+
+ult <- hist %>% 
+  filter(ano == max(ano)) %>% 
+  group_by(ano, mes) %>% 
+  summarise(fob = sum(fob))
+
+ult_ant <- hist %>% 
+  filter(ano == max(ano)-1) %>% 
+  group_by(ano, mes) %>% 
+  summarise(fob = sum(fob))
+
+g %>% 
+  ggplot(aes(as.factor(mes), fob)) +
+  geom_line(aes(group = ano), color = "grey40", alpha = 0.5) +
+  geom_line(data = ult, aes(group = ano), color = "blue", size = 1.5) +
+  geom_line(data = ult_ant, aes(group = ano), color = "grey30", size = 1)
+  
+```
+
+
+7. Reducir el nombre de la categoria de Combustibles de OMC
+8. Buscar diccionario de paises INDEC - cod ISO para cdo haga mapa
+9. Ver si puedo poner passward para ingresar.
