@@ -1,0 +1,9 @@
+---
+title: "DESCRIPCION"
+output: html_notebook
+data: 2020-06-03
+---
+
+Este repo es sobre la shiny app de las exportaciones argentinas, en proceso.
+
+Sigo intentando entender como funciona esto...
