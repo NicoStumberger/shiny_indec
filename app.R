@@ -10,7 +10,7 @@ library(readxl)
 library(plotly) # para los graficos interactivos
 library(lubridate) # para manejar fechas
 
-# Dataset completo
+# Carga de Datasets ----
 expo_shiny <- readRDS("data/expo_shiny_post2010.RDS")
 
 desc_ncm <- readRDS("data/desc_ncm.RDS")
@@ -27,25 +27,38 @@ ano_0 <- expo_shiny %>%
     left_join(desc_ncm) %>% 
     mutate(Mes = month(mes, label = TRUE, abbr = TRUE))
 
-# Mapa
+# Mapa ----
 
 mapa_crudo <- readOGR(
     dsn = "data/nuevo_mundo_simpli_es" ,
     layer = "nuevo_mundo_simpli_es",
     verbose = FALSE,
-    # Si no, no me levanta los nombres en espanol con tildes y enies mal
-    encoding = "UTF-8"
+    encoding = "UTF-8" # para nombres en espanol con enies
 ) %>%
     st_as_sf(mapa_crudo)
 
 
-# Evolucion mensual
+# Grafico evolucion mensual ----
+
+# Grafico de pendientes ----
+
+# mesec queda fuera del server
+mesec <- max(unique(ano_1$mes))
+
+# paleta de colores queda fuera del server
+color_cat_1 <- c("#00B1AC", "#00ADE6","#E9644C", "#7F7F7F")
+
+# var_subcat puede quedar fuera del server
+var_subcat <- expo_shiny %>% 
+    filter(ano >= max(ano) - 1 & mes <= mesec) %>% 
+    group_by(ano, cat_omc_1, cat_omc_2) %>% 
+    summarise(fob_mm = sum(fob) / 1000000) %>% 
+    group_by(cat_omc_2) %>% 
+    mutate(var = (fob_mm / lag(fob_mm, n = 1) - 1) * 100) %>% 
+    as_tibble()
 
 
-
-
-
-# UI
+# UI ----
 
 # Sidebar
 
@@ -111,11 +124,13 @@ body <- dashboardBody(tabItems(
             box(
                 title = "Evolución mensual de las exportaciones",
                 solidHeader = TRUE,
-                plotlyOutput(outputId = "evol"),
-                "Fuente: ..."
+                plotlyOutput(outputId = "evol")
             ),
-            box(title = "Variación interanual por sub-categorías",
-                plotlyOutput(outputId = "vari"))
+            box(
+                title = "Variación interanual por subcategorías",
+                solidHeader = TRUE,
+                plotlyOutput(outputId = "pendiente")
+                )
         )
     ),
     ## Contenido del sgdo tab
@@ -152,13 +167,14 @@ body <- dashboardBody(tabItems(
     )
 ))
 
-# Union en una pagina
+# Union en una pagina ----
 ui <- dashboardPage(
     dashboardHeader(title = "Exportaciones"),
     sidebar,
     body
 )
 
+# Server ----
 
 server <- function(input, output) {
     subset_cat_1 <- reactive(
@@ -171,6 +187,10 @@ server <- function(input, output) {
     )
     subset_cat <- reactive(
         expo_shiny %>% 
+            filter(cat_omc_1 %in% input$categoria)
+    )
+    subset_pendiente <- reactive(
+        var_subcat %>% 
             filter(cat_omc_1 %in% input$categoria)
     )
     
@@ -186,7 +206,7 @@ server <- function(input, output) {
             )
     })
     
-    # Total del perido anterior
+    # Total del periodo anterior
     output$tot_0 <- renderValueBox({
         valueBox(
            format(round(sum(subset_cat_0()$fob) / 1000000, digits = 0),
@@ -400,31 +420,86 @@ server <- function(input, output) {
         ggplotly(ev, tooltip = c("x", "y"))
     })
     
+    # Grafico de pendientes
+    output$pendiente <- renderPlotly({
+        
+        g_pendiente <- subset_pendiente() %>%
+            ggplot(aes(as_factor(ano), fob_mm, group = cat_omc_2)) +
+            geom_line(aes(color = cat_omc_1)) +
+            geom_point(aes(color = cat_omc_1),
+                       size = 3.5) +
+            geom_text(
+                data = subset(subset_pendiente(), ano < max(ano)),
+                aes(color = cat_omc_1),
+                label = if_else(
+                    str_length(unique(subset_pendiente()$cat_omc_2)) > 22,
+                    paste0(str_sub(
+                        unique(subset_pendiente()$cat_omc_2),
+                        start = 1,
+                        end = 15
+                    ), "..."),
+                    paste0(unique(subset_pendiente()$cat_omc_2))
+                ),
+                size = 3,
+                nudge_x = -0.3,
+                hjust = 0,
+            ) +
+            geom_text(
+                aes(color = cat_omc_1),
+                label = if_else(is.na(subset_pendiente()$var), paste0(""),
+                                paste0(
+                                    format(
+                                        subset_pendiente()$var,
+                                        digits = 2,
+                                        big.mark = ".",
+                                        decimal.mark = ","
+                                    ),
+                                    " %"
+                                )), 
+                size = 3,
+                nudge_x = 0.15,
+                hjust = 0
+            ) +
+            scale_color_manual(values = color_cat_1) +
+            scale_y_log10() +
+            theme_minimal() +
+            theme(
+                legend.position = "none",
+                legend.title = element_blank(),
+                panel.grid = element_blank(),
+                axis.text.y = element_blank()
+            ) +
+            labs(x = "",
+                 y = "")
+        
+        ggplotly(g_pendiente)
+    })
+    
     # Por destino
-    output$gif1 <- renderImage({
-        return(list(src = "data/working.gif", contentType = "image/gif"))
-    }, deleteFile = FALSE)
+    # output$gif1 <- renderImage({
+    #     return(list(src = "data/working.gif", contentType = "image/gif"))
+    # }, deleteFile = FALSE)
     
     output$gif2 <- renderImage({
         return(list(src = "data/working.gif", contentType = "image/gif"))
     }, deleteFile = FALSE)
     
-    output$gif3 <- renderImage({
-        return(list(src = "data/working.gif", contentType = "image/gif"))
-    }, deleteFile = FALSE)
+    # output$gif3 <- renderImage({
+    #     return(list(src = "data/working.gif", contentType = "image/gif"))
+    # }, deleteFile = FALSE)
     
     # Por producto
-    output$gif4 <- renderImage({
-        return(list(src = "data/working.gif", contentType = "image/gif"))
-    }, deleteFile = FALSE)
+    # output$gif4 <- renderImage({
+    #     return(list(src = "data/working.gif", contentType = "image/gif"))
+    # }, deleteFile = FALSE)
     
     output$gif5 <- renderImage({
         return(list(src = "data/working.gif", contentType = "image/gif"))
     }, deleteFile = FALSE)
     
-    output$gif6 <- renderImage({
-        return(list(src = "data/working.gif", contentType = "image/gif"))
-    }, deleteFile = FALSE)
+    # output$gif6 <- renderImage({
+    #     return(list(src = "data/working.gif", contentType = "image/gif"))
+    # }, deleteFile = FALSE)
 }
 
 

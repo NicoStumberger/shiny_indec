@@ -48,6 +48,25 @@ expo_shiny <- hist %>%
         left_join(dic_omc) %>% 
         left_join(dic_pais)
 
+# Necesito las categorias convertidas en factors
+expo_shiny$cat_omc_1 <- as_factor(expo_shiny$cat_omc_1)
+expo_shiny$cat_omc_2 <- factor(expo_shiny$cat_omc_2, 
+                               levels = c(
+                                       "Productos alimenticios",
+                                       "Materias primas",
+                                       "Menas y minerales",
+                                       "Combustibles",
+                                       "Metales no ferrosos",
+                                       "Hierro y acero",
+                                       "Productos químicos",
+                                       "Otras semimanufacturas",
+                                       "Maquinaria y equipo de transporte totales",
+                                       "Textiles",
+                                       "Prendas de vestir",
+                                       "Otras manufacturas",
+                                       "Otros"
+                               ))
+
 skimr::skim(expo_shiny)     
 
 ## Desde 2002
