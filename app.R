@@ -120,8 +120,7 @@ body <- dashboardBody(tabItems(
             boxPlus(
                 solidHeader = FALSE,
                 title = paste0(
-                    "Exportaciones del periodo ",
-                    min(ano_1$Mes),
+                    "Exportaciones del periodo Ene",
                     " - ",
                     max(ano_1$Mes),
                     " y variación interanual"
@@ -256,68 +255,6 @@ server <- function(input, output) {
         )
     })
     
-    # # Total del periodo
-    # output$tot_1 <- renderValueBox({
-    #     valueBox(
-    #         format(
-    #             round(sum(subset_cat_1()$fob) / 1000000, digits = 0),
-    #             big.mark = ".",
-    #             decimal.mark = ","
-    #         ),
-    #         paste0("Periodo actual ", max(ano_1$ano), " (en mill. USD)"),
-    #         icon = icon("dollar-sign"),
-    #         color = "light-blue"
-    #     )
-    # })
-    
-    # # Total del periodo anterior
-    # output$tot_0 <- renderValueBox({
-    #     valueBox(
-    #         format(
-    #             round(sum(subset_cat_0()$fob) / 1000000, digits = 0),
-    #             big.mark = ".",
-    #             decimal.mark = ","
-    #         ),
-    #         paste0("Mismo periodo ", max(ano_0$ano), " (en mill. USD)"),
-    #         icon = icon("dollar-sign"),
-    #         color = "light-blue"
-    #     )
-    # })
-    
-    # # Variacion interanual en usd
-    # output$var_usd <- renderValueBox({
-    #     valueBox(
-    #         paste0(format(
-    #             round((
-    #                 sum(subset_cat_1()$fob) / sum(subset_cat_0()$fob) - 1
-    #             ) * 100,
-    #             digits = 1),
-    #             big.mark = ".",
-    #             decimal.mark = ","
-    #         ), " %"),
-    #         "Var interanual en USD",
-    #         icon = icon("money-bill"),
-    #         color = "light-blue"
-    #     )
-    # })
-    
-    # # Variacion interanual en kg
-    # output$var_kg <- renderValueBox({
-    #     valueBox(
-    #         paste0(format(
-    #             round((
-    #                 sum(subset_cat_1()$pnet_kg) / sum(subset_cat_0()$pnet_kg) - 1
-    #             ) * 100,
-    #             digits = 1),
-    #             big.mark = ".",
-    #             decimal.mark = ","
-    #         ), " %"),
-    #         "Var interanual en Kg",
-    #         icon = icon("dolly"),
-    #         color = "light-blue"
-    #     )
-    # })
-    
     # Mapa
     output$mapa <- renderLeaflet({
         # Preparacion de dataset
@@ -404,10 +341,10 @@ server <- function(input, output) {
         
         # Renderizacion del mapa
         leaflet(data = mapa,
-                options = leafletOptions(minZoom = 2.2, maxZoom = 6)) %>%
+                options = leafletOptions(minZoom = 1.9, maxZoom = 6)) %>%
             setView(lng = 0,
                     lat = 0,
-                    zoom = 2.3) %>%
+                    zoom = 1.9) %>%
             fitBounds(
                 lng1 = -169.276515,
                 lat1 = 65.715532,
