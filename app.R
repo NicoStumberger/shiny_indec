@@ -9,6 +9,9 @@ library(htmltools)
 library(readxl)
 library(plotly) # para los graficos interactivos
 library(lubridate) # para manejar fechas
+library(shinydashboardPlus) # cuenta con algunas funcionalidades que mejoran el dash
+library(shinyWidgets)
+
 
 # Carga de Datasets ----
 expo_shiny <- readRDS("data/expo_shiny_post2010.RDS")
@@ -91,47 +94,67 @@ body <- dashboardBody(tabItems(
     ## Contenido de primer tab
     tabItem(
         tabName = "general",
-        # h1("Exportaciones argentinas"),
-        h3(paste0(
-            "Periodo: ",
-            min(ano_1$Mes),
-            " - ",
-            max(ano_1$Mes),
-            " ",
-            "(",
-            max(ano_1$ano),
-            ")"
-        )),
         ## Boxes deben ir en rows o cols
         fluidRow(
-            box(
+            boxPlus(
                 title = "Categorias",
-                checkboxGroupInput(
-                    "categoria",
-                    "Elige una o varias",
-                    choices = unique(expo_shiny$cat_omc_1),
-                    selected = unique(expo_shiny$cat_omc_1)
+                prettyCheckboxGroup(
+                    inputId = "categoria",
+                    label = "Selecciona una o varias",
+                    thick = TRUE,
+                    # choices = levels(expo_shiny$cat_omc_1),
+                    selected = levels(expo_shiny$cat_omc_1),
+                    animation = "pulse",
+                    status = "info",
+                    choiceNames = c(
+                        "Productos agrícolas",
+                        "Manufacturas",
+                        "Combustibles y p.i.e.",
+                        "Otros"
+                    ),
+                    choiceValues = levels(expo_shiny$cat_omc_1)
                 ),
+                closable = FALSE,
                 width = 4
             ),
-            valueBoxOutput(outputId = "tot_1"),
-            valueBoxOutput(outputId = "var_usd"),
-            valueBoxOutput(outputId = "tot_0"),
-            valueBoxOutput(outputId = "var_kg")
+            boxPlus(
+                solidHeader = FALSE,
+                title = paste0(
+                    "Exportaciones del periodo ",
+                    min(ano_1$Mes),
+                    " - ",
+                    max(ano_1$Mes),
+                    " y variación interanual"
+                ),
+                width = 8,
+                status = "danger",
+                closable = FALSE,
+                footer = fluidRow(# descripcion general del periodo
+                    column(width = 6,
+                           uiOutput("desc_ano_1")),
+                    column(width = 6,
+                           uiOutput("desc_ano_0")))
+            ),
         ),
-        fluidRow(leafletOutput("mapa")),
+        fluidRow(
+            box(
+                width = 12,
+                leafletOutput("mapa")
+            )
+        ),
         fluidRow(
             box(
                 title = "Evolución mensual de las exportaciones",
                 solidHeader = TRUE,
-                plotlyOutput(outputId = "evol")
+                plotlyOutput(outputId = "evol"),
+                width = 6 
             ),
             box(
                 title = "Variación interanual por subcategorías",
                 solidHeader = TRUE,
                 plotlyOutput(outputId = "pendiente")
-                )
-        )
+            )
+        ),
     ),
     ## Contenido del sgdo tab
     tabItem(
@@ -168,8 +191,10 @@ body <- dashboardBody(tabItems(
 ))
 
 # Union en una pagina ----
-ui <- dashboardPage(
-    dashboardHeader(title = "Exportaciones"),
+ui <- dashboardPagePlus(
+    header = dashboardHeaderPlus(
+        title = "Exportaciones",
+        fixed = FALSE),
     sidebar,
     body
 )
@@ -177,105 +202,166 @@ ui <- dashboardPage(
 # Server ----
 
 server <- function(input, output) {
-    subset_cat_1 <- reactive(
-        ano_1 %>% 
-            filter(cat_omc_1 %in% input$categoria)
-    )
-    subset_cat_0 <- reactive(
-        ano_0 %>% 
-            filter(cat_omc_1 %in% input$categoria)
-    )
-    subset_cat <- reactive(
-        expo_shiny %>% 
-            filter(cat_omc_1 %in% input$categoria)
-    )
-    subset_pendiente <- reactive(
-        var_subcat %>% 
-            filter(cat_omc_1 %in% input$categoria)
-    )
+    subset_cat_1 <- reactive(ano_1 %>%
+                                 filter(cat_omc_1 %in% input$categoria))
+    subset_cat_0 <- reactive(ano_0 %>%
+                                 filter(cat_omc_1 %in% input$categoria))
+    subset_cat <- reactive(expo_shiny %>%
+                               filter(cat_omc_1 %in% input$categoria))
+    subset_pendiente <- reactive(var_subcat %>%
+                                     filter(cat_omc_1 %in% input$categoria))
     
-    # Total del periodo
-    output$tot_1 <- renderValueBox({
-        valueBox(
-                format(round(sum(subset_cat_1()$fob) / 1000000, digits = 0),
-                       big.mark = ".", 
-                       decimal.mark = ","),
-            paste0("Periodo actual ", max(ano_1$ano), " (en mill. USD)"), 
-            icon = icon("dollar-sign"),
-            color = "light-blue"
-            )
-    })
-    
-    # Total del periodo anterior
-    output$tot_0 <- renderValueBox({
-        valueBox(
-           format(round(sum(subset_cat_0()$fob) / 1000000, digits = 0),
-                         big.mark = ".", decimal.mark = ","),
-           paste0("Mismo periodo ", max(ano_0$ano), " (en mill. USD)"), 
-           icon = icon("dollar-sign"),
-           color = "light-blue"
+    # Descripcion del periodo
+    output$desc_ano_1 <- renderUI({
+        
+        number_0 <- format(round((
+            sum(subset_cat_1()$fob) / sum(subset_cat_0()$fob) - 1
+        ) * 100,
+        digits = 1),
+        big.mark = ".",
+        decimal.mark = ",")
+        
+        header_0 <- format(round(sum(subset_cat_1()$fob) / 1000000, digits = 0),
+                           big.mark = ".",
+                           decimal.mark = ",")
+        
+        descriptionBlock(
+            number = paste0(number_0," %"),
+            number_color = if_else(number_0 >= 0, "green", "red"),
+            number_icon = if_else(number_0 >= 0, 
+                                  "fa fa-caret-up", 
+                                  "fa fa-caret-down"),
+            header = paste0("USD ", header_0, " (mill)"),
+            text = paste0("ENE", "-", 
+                          max(ano_1$Mes), " ",
+                          max(ano_1$ano)
+                          ),
+            right_border = TRUE
         )
     })
     
-    # Variacion interanual en usd
-    output$var_usd <- renderValueBox({
-        valueBox(
-            paste0(format(round((sum(subset_cat_1()$fob) / sum(subset_cat_0()$fob) - 1) * 100, 
-                                digits = 1), 
-                          big.mark = ".", decimal.mark = ","), " %"),
-            "Var interanual en USD", icon = icon("money-bill"),
-            color = "light-blue"
+    output$desc_ano_0 <- renderUI({
+        header_1 <- format(round(sum(subset_cat_0()$fob) / 1000000,
+                                 digits = 0),
+                           big.mark = ".",
+                           decimal.mark = ",")
+        
+        descriptionBlock(
+            number = " ",
+            header = paste0("USD ", header_1, " (mill)"),
+            text = paste0("ENE", "-",
+                          max(ano_1$Mes), " ",
+                          max(ano_0$ano)),
+            right_border = FALSE
         )
     })
     
-    # Variacion interanual en kg
-    output$var_kg <- renderValueBox({
-        valueBox(
-            paste0(
-                format(
-                round(
-                (sum(
-                    subset_cat_1()$pnet_kg) / sum(subset_cat_0()$pnet_kg) - 1) * 100, 
-                                digits = 1), 
-                          big.mark = ".", decimal.mark = ","), " %"),
-            "Var interanual en Kg", icon = icon("dolly"),
-            color = "light-blue"
-        )
-    })
+    # # Total del periodo
+    # output$tot_1 <- renderValueBox({
+    #     valueBox(
+    #         format(
+    #             round(sum(subset_cat_1()$fob) / 1000000, digits = 0),
+    #             big.mark = ".",
+    #             decimal.mark = ","
+    #         ),
+    #         paste0("Periodo actual ", max(ano_1$ano), " (en mill. USD)"),
+    #         icon = icon("dollar-sign"),
+    #         color = "light-blue"
+    #     )
+    # })
+    
+    # # Total del periodo anterior
+    # output$tot_0 <- renderValueBox({
+    #     valueBox(
+    #         format(
+    #             round(sum(subset_cat_0()$fob) / 1000000, digits = 0),
+    #             big.mark = ".",
+    #             decimal.mark = ","
+    #         ),
+    #         paste0("Mismo periodo ", max(ano_0$ano), " (en mill. USD)"),
+    #         icon = icon("dollar-sign"),
+    #         color = "light-blue"
+    #     )
+    # })
+    
+    # # Variacion interanual en usd
+    # output$var_usd <- renderValueBox({
+    #     valueBox(
+    #         paste0(format(
+    #             round((
+    #                 sum(subset_cat_1()$fob) / sum(subset_cat_0()$fob) - 1
+    #             ) * 100,
+    #             digits = 1),
+    #             big.mark = ".",
+    #             decimal.mark = ","
+    #         ), " %"),
+    #         "Var interanual en USD",
+    #         icon = icon("money-bill"),
+    #         color = "light-blue"
+    #     )
+    # })
+    
+    # # Variacion interanual en kg
+    # output$var_kg <- renderValueBox({
+    #     valueBox(
+    #         paste0(format(
+    #             round((
+    #                 sum(subset_cat_1()$pnet_kg) / sum(subset_cat_0()$pnet_kg) - 1
+    #             ) * 100,
+    #             digits = 1),
+    #             big.mark = ".",
+    #             decimal.mark = ","
+    #         ), " %"),
+    #         "Var interanual en Kg",
+    #         icon = icon("dolly"),
+    #         color = "light-blue"
+    #     )
+    # })
     
     # Mapa
     output$mapa <- renderLeaflet({
         # Preparacion de dataset
-        ano_0_fob <- subset_cat_0() %>% 
-            group_by(iso3) %>% 
+        ano_0_fob <- subset_cat_0() %>%
+            group_by(iso3) %>%
             summarise(fob_mm_tot_0 = sum(fob) / 1000000)
         
-        top_p <- subset_cat_1() %>% 
-            group_by(iso3, desc_ncm) %>% 
-            summarise(fob_mm = sum(fob) / 1000000) %>% 
+        top_p <- subset_cat_1() %>%
+            group_by(iso3, desc_ncm) %>%
+            summarise(fob_mm = sum(fob) / 1000000) %>%
             mutate(fob_mm_tot = sum(fob_mm),
-                   part = fob_mm / fob_mm_tot * 100) %>% 
-            arrange(iso3, desc(part)) %>% 
-            top_n(n = 3, wt = part) %>% 
-            mutate(top = paste0("top_", rank(desc(part)))) %>% 
-            pivot_wider(names_from = top, values_from = c(desc_ncm, fob_mm, part)) %>% 
-            left_join(ano_0_fob) %>% 
+                   part = fob_mm / fob_mm_tot * 100) %>%
+            arrange(iso3, desc(part)) %>%
+            top_n(n = 3, wt = part) %>%
+            mutate(top = paste0("top_", rank(desc(part)))) %>%
+            pivot_wider(names_from = top,
+                        values_from = c(desc_ncm, fob_mm, part)) %>%
+            left_join(ano_0_fob) %>%
             mutate(ano_0_var = (fob_mm_tot / fob_mm_tot_0 - 1) * 100)
         
         #Union con geometrias
-        mapa <- left_join(mapa_crudo, top_p, by = c("ISO3_CO" = "iso3"))
+        mapa <-
+            left_join(mapa_crudo, top_p, by = c("ISO3_CO" = "iso3"))
         
         # Paleta de colores
-        pal <- colorNumeric(palette = c("#79dcff", "#01548A"),  # mejorar la paleta
-                            domain = mapa$fob_mm_tot, # podria cambiarlo para dejarlo fuera?
-                            na.color = "#BFBFBF")
+        pal <-
+            colorNumeric(
+                palette = c("#79dcff", "#01548A"),
+                # mejorar la paleta
+                domain = mapa$fob_mm_tot,
+                # podria cambiarlo para dejarlo fuera?
+                na.color = "#BFBFBF"
+            )
         
         # Popup
         popup <- if_else(
             is.na(mapa$fob_mm_tot),
-            paste0("<b>", mapa$nmbr_tr, "</b>",
-                   "<br>",
-                   "Sin datos en el periodo"),
+            paste0(
+                "<b>",
+                mapa$nmbr_tr,
+                "</b>",
+                "<br>",
+                "Sin datos en el periodo"
+            ),
             paste0(
                 "<b>",
                 mapa$nmbr_tr,
@@ -286,33 +372,49 @@ server <- function(input, output) {
                     big.mark = ".",
                     decimal.mark = ","
                 ),
-                " mill.", "</b>",
+                " mill.",
+                "</b>",
                 "<br>",
                 "Var. interanual: ",
-                format(
-                    round(mapa$ano_0_var, 1),
-                    decimal.mark = ","
-                ), "%",
+                format(round(mapa$ano_0_var, 1),
+                       decimal.mark = ","),
+                "%",
                 "<br>",
-                "Principales productos al destino:", "<br>",
-                format(
-                    round(mapa$part_top_1, 1), 
-                    decimal.mark = ","),"%", " | ", mapa$desc_ncm_top_1, "<br>", 
-                format(
-                    round(mapa$part_top_2, 1), 
-                    decimal.mark = ","),"%", " | ", mapa$desc_ncm_top_2, "<br>",
-                format(
-                    round(mapa$part_top_3, 1), 
-                    decimal.mark = ","),"%", " | ", mapa$desc_ncm_top_3
+                "Principales productos al destino:",
+                "<br>",
+                format(round(mapa$part_top_1, 1),
+                       decimal.mark = ","),
+                "%",
+                " | ",
+                mapa$desc_ncm_top_1,
+                "<br>",
+                format(round(mapa$part_top_2, 1),
+                       decimal.mark = ","),
+                "%",
+                " | ",
+                mapa$desc_ncm_top_2,
+                "<br>",
+                format(round(mapa$part_top_3, 1),
+                       decimal.mark = ","),
+                "%",
+                " | ",
+                mapa$desc_ncm_top_3
             )
         )
         
         # Renderizacion del mapa
-        leaflet(data = mapa, options = leafletOptions(minZoom = 2.2, maxZoom = 6)) %>%
-            setView(lng = 0, lat = 0, zoom = 2.3) %>% 
-            fitBounds(lng1 = -169.276515, lat1 = 65.715532, 
-                      lng2 = 179.738538, lat2 = -67.196362) %>% 
-            clearBounds() %>% 
+        leaflet(data = mapa,
+                options = leafletOptions(minZoom = 2.2, maxZoom = 6)) %>%
+            setView(lng = 0,
+                    lat = 0,
+                    zoom = 2.3) %>%
+            fitBounds(
+                lng1 = -169.276515,
+                lat1 = 65.715532,
+                lng2 = 179.738538,
+                lat2 = -67.196362
+            ) %>%
+            clearBounds() %>%
             # addProviderTiles(providers$CartoDB.DarkMatterNoLabels) %>%
             addPolygons(
                 fillColor = ~ pal(fob_mm_tot),
@@ -340,81 +442,82 @@ server <- function(input, output) {
                     textsize = "20px",
                     direction = "auto"
                 )
-            ) %>% 
+            ) %>%
             addEasyButton(easyButton(
-                icon="fa-globe", title="Zoom to Level 1",
-                onClick=JS("function(btn, map){ map.setZoom(2.3); }")))
-
+                icon = "fa-globe",
+                title = "Zoom to Level 1",
+                onClick = JS("function(btn, map){ map.setZoom(2.3); }")
+            ))
+        
     })
     
     # Evolucion mensual
     output$evol <- renderPlotly({
-        evol <-  subset_cat() %>% 
-            group_by(ano, mes) %>% 
-            summarise(fob_tot_mm = sum(fob) / 1000000) %>% 
-            as_tibble() %>% 
+        evol <-  subset_cat() %>%
+            group_by(ano, mes) %>%
+            summarise(fob_tot_mm = sum(fob) / 1000000) %>%
+            as_tibble() %>%
             mutate(Mes = month(mes, label = TRUE))
         
-        evol_ant <- evol %>% 
+        evol_ant <- evol %>%
             filter(ano < max(ano) - 1)
         
-        evol_0 <- evol %>% 
+        evol_0 <- evol %>%
             filter(ano == max(ano) - 1)
         
-        evol_1 <- evol %>% 
+        evol_1 <- evol %>%
             filter(ano == max(ano))
         
-        evol_punto_1 <- evol %>% 
-            filter(ano == max(ano)) %>% 
+        evol_punto_1 <- evol %>%
+            filter(ano == max(ano)) %>%
             filter(mes == max(mes))
         
         ev <- evol_ant %>%
             ggplot(aes(Mes, fob_tot_mm)) +
-            geom_line(aes(group = ano, color = paste0("2010-", max(ano))) 
-            ) +
-            geom_line(
-                data = evol_0,
-                aes(group = ano, color = paste0(max(ano)))
-            ) +
-            geom_line(
-                data = evol_1,
-                aes(group = ano, color = paste0(max(ano))),
-                size = 1.2,
+            geom_line(aes(group = ano, color = paste0("2010-", max(ano)))) +
+            geom_line(data = evol_0,
+                      aes(group = ano, color = paste0(max(ano)))) +
+            geom_line(data = evol_1,
+                      aes(group = ano, color = paste0(max(ano))),
+                      size = 1.2,
             ) +
             geom_point(data = evol_punto_1,
-                       aes(Mes, 
-                           fob_tot_mm, 
-                           color = paste0(max(month(evol_1$mes, 
-                                                    label = TRUE, 
-                                                    abbr = FALSE))
-                           )
-                       ),
+                       aes(Mes,
+                           fob_tot_mm,
+                           color = paste0(max(
+                               month(evol_1$mes,
+                                     label = TRUE,
+                                     abbr = FALSE)
+                           ))),
                        size = 3) +
             theme_minimal() +
             theme(panel.grid.major = element_blank()) +
-            labs(
-                # podria sacar eltexto del server
+            labs(# podria sacar eltexto del server
                 x = "",
                 y = "USD FOB en mill.",
-                color = "Años"
-            ) +
+                color = "Años") +
             # podría sacarlo del server
             scale_y_continuous(labels = scales::comma_format(big.mark = ".",
                                                              decimal.mark = ",")) +
-            scale_color_manual("",
-                               # Podria sacarlo del server
-                               breaks = c(paste0("2010-", max(evol_ant$ano)),
-                                          paste0(max(evol_0$ano)),
-                                          paste0(max(evol_1$ano)), 
-                                          paste0(max(month(evol_1$mes, 
-                                                           label = TRUE, 
-                                                           abbr = FALSE)))
-                               ),
-                               # podría sacarlo del server
-                               values = c("#BFBFBF", 
-                                          "#00ADE6", 
-                                          "#3175AC", 
-                                          "#3175AC"))
+            scale_color_manual(
+                "",
+                # Podria sacarlo del server
+                breaks = c(
+                    paste0("2010-", max(evol_ant$ano)),
+                    paste0(max(evol_0$ano)),
+                    paste0(max(evol_1$ano)),
+                    paste0(max(
+                        month(evol_1$mes,
+                              label = TRUE,
+                              abbr = FALSE)
+                    ))
+                ),
+                # podría sacarlo del server
+                values = c("#BFBFBF",
+                           "#00ADE6",
+                           "#3175AC",
+                           "#3175AC")
+            )
         
         # Render grafico
         ggplotly(ev, tooltip = c("x", "y"))
@@ -422,7 +525,6 @@ server <- function(input, output) {
     
     # Grafico de pendientes
     output$pendiente <- renderPlotly({
-        
         g_pendiente <- subset_pendiente() %>%
             ggplot(aes(as_factor(ano), fob_mm, group = cat_omc_2)) +
             geom_line(aes(color = cat_omc_1)) +
@@ -446,16 +548,19 @@ server <- function(input, output) {
             ) +
             geom_text(
                 aes(color = cat_omc_1),
-                label = if_else(is.na(subset_pendiente()$var), paste0(""),
-                                paste0(
-                                    format(
-                                        subset_pendiente()$var,
-                                        digits = 2,
-                                        big.mark = ".",
-                                        decimal.mark = ","
-                                    ),
-                                    " %"
-                                )), 
+                label = if_else(
+                    is.na(subset_pendiente()$var),
+                    paste0(""),
+                    paste0(
+                        format(
+                            subset_pendiente()$var,
+                            digits = 2,
+                            big.mark = ".",
+                            decimal.mark = ","
+                        ),
+                        " %"
+                    )
+                ),
                 size = 3,
                 nudge_x = 0.15,
                 hjust = 0
