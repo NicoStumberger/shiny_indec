@@ -45,13 +45,10 @@ mapa_crudo <- readOGR(
 
 # Grafico de pendientes ----
 
-# mesec queda fuera del server
 mesec <- max(unique(ano_1$mes))
 
-# paleta de colores queda fuera del server
 color_cat_1 <- c("#00B1AC", "#00ADE6","#E9644C", "#7F7F7F")
 
-# var_subcat puede quedar fuera del server
 var_subcat <- expo_shiny %>% 
     filter(ano >= max(ano) - 1 & mes <= mesec) %>% 
     group_by(ano, cat_omc_1, cat_omc_2) %>% 
