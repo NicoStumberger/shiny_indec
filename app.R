@@ -91,7 +91,7 @@ body <- dashboardBody(tabItems(
     ## Contenido de primer tab
     tabItem(
         tabName = "general",
-        ## Boxes deben ir en rows o cols
+        # Primer fila
         fluidRow(
             boxPlus(
                 title = "Categorias",
