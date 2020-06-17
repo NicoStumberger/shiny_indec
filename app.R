@@ -67,19 +67,19 @@ sidebar <- dashboardSidebar(collapsed = TRUE,
     menuItem(
         "General",
         tabName = "general",
-        icon = icon("chart-line"),
+        icon = icon("calendar-check"),
         badgeLabel = "Actualizado",
         badgeColor = "green"
     ),
     menuItem("Por destino", tabName = "destino",
-             icon = icon("th"), 
+             icon = icon("globe"), # fly
              badgeLabel = "Prox.",
              badgeColor = "yellow"
              ),
     menuItem(
         "Por producto",
         tabName = "producto",
-        icon = icon("angellist"),
+        icon = icon("tags"), # barcode
         badgeLabel = "Prox.",
         badgeColor = "yellow"
     )
