@@ -272,19 +272,30 @@ server <- function(input, output) {
         )
     })
     
-    output$desc_ano_0 <- renderUI({
-        header_1 <- format(round(sum(subset_cat_0()$fob) / 1000000,
-                                 digits = 0),
+    output$desc_ano_1_ton <- renderUI({
+        
+        number_0 <- format(round((
+            sum(subset_cat_1()$pnet_kg) / sum(subset_cat_0()$pnet_kg) - 1
+        ) * 100,
+        digits = 1),
+        big.mark = ".",
+        decimal.mark = ",")
+        
+        header_0 <- format(round(sum(subset_cat_1()$pnet_kg) / 1000000, digits = 0),
                            big.mark = ".",
                            decimal.mark = ",")
         
         descriptionBlock(
-            number = " ",
-            header = paste0("USD ", header_1, " (mill)"),
-            text = paste0("ENE", "-",
+            number = paste0(number_0," %"),
+            number_color = if_else(number_0 >= 0, "green", "red"),
+            number_icon = if_else(number_0 >= 0, 
+                                  "fa fa-caret-up", 
+                                  "fa fa-caret-down"),
+            header = paste0(header_0, " (miles de ton)"),
+            text = paste0("ENE", "-", 
                           max(ano_1$Mes), " ",
-                          max(ano_0$ano)),
-            right_border = FALSE
+                          max(ano_1$ano)
+            )
         )
     })
     
