@@ -138,28 +138,46 @@ body <- dashboardBody(tabItems(
                     column(width = 6,
                            uiOutput("desc_ano_1")),
                     column(width = 6,
-                           uiOutput("desc_ano_0")))
+                           uiOutput("desc_ano_1_ton")))
             ),
         ),
+        # Segunda fila MAPA
         fluidRow(
             box(
                 width = 12,
                 leafletOutput("mapa")
             )
         ),
+        # Tercer fila 
         fluidRow(
             box(
                 title = "Evolución mensual de las exportaciones",
                 solidHeader = TRUE,
                 plotlyOutput(outputId = "evol"),
-                width = 6 
+                width = 6,
+                prettyToggle(
+                    inputId = "toggle1",
+                    label_on = "Mostrar valores FOB",
+                    label_off = "Mostrar cantidades",
+                    icon_on = icon("angle-left"),
+                    icon_off = icon("angle-right"), 
+                    animation = "pulse"
+                )
             ),
             box(
                 title = "Variación interanual por subcategorías",
                 solidHeader = TRUE,
-                plotlyOutput(outputId = "pendiente")
+                plotlyOutput(outputId = "pendiente"),
+                prettyToggle(
+                    inputId = "toggle2",
+                    label_on = "Mostrar valores FOB",
+                    label_off = "Mostrar cantidades",
+                    icon_on = icon("angle-left"),
+                    icon_off = icon("angle-right"), 
+                    animation = "pulse"
+                )
             )
-        ),
+        )
     ),
     ## Contenido del sgdo tab
     tabItem(
