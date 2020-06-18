@@ -231,8 +231,17 @@ server <- function(input, output) {
                                  filter(cat_omc_1 %in% input$categoria))
     subset_cat <- reactive(expo_shiny %>%
                                filter(cat_omc_1 %in% input$categoria))
-    subset_pendiente <- reactive(var_subcat %>%
-                                     filter(cat_omc_1 %in% input$categoria))
+    
+    subset_pendiente <- reactive(
+        if(input$toggle2 == FALSE){
+            var_subcat_fob %>% 
+                filter(cat_omc_1 %in% input$categoria)
+        }else{
+            var_subcat_ton %>% 
+                filter(cat_omc_1 %in% input$categoria)
+        }
+    )
+    
     
     # Descripcion del periodo
     output$desc_ano_1 <- renderUI({
