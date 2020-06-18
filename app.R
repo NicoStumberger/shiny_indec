@@ -433,12 +433,22 @@ server <- function(input, output) {
     })
     
     # Evolucion mensual
+    output$res1 <- renderPrint(input$toggle1)
+    
     output$evol <- renderPlotly({
-        evol <-  subset_cat() %>%
-            group_by(ano, mes) %>%
-            summarise(fob_tot_mm = sum(fob) / 1000000) %>%
-            as_tibble() %>%
-            mutate(Mes = month(mes, label = TRUE))
+        if(input$toggle1 == FALSE) {
+            evol <-  subset_cat() %>%
+                group_by(ano, mes) %>%
+                summarise(y = sum(fob) / 1000000) %>%
+                as_tibble() %>%
+                mutate(Mes = month(mes, label = TRUE))
+        } else {
+            evol <-  subset_cat() %>%
+                group_by(ano, mes) %>%
+                summarise(y = sum(pnet_kg) / 1000000) %>%
+                as_tibble() %>%
+                mutate(Mes = month(mes, label = TRUE))
+        }
         
         evol_ant <- evol %>%
             filter(ano < max(ano) - 1)
