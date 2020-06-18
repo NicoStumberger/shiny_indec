@@ -49,14 +49,23 @@ mesec <- max(unique(ano_1$mes))
 
 color_cat_1 <- c("#00B1AC", "#00ADE6","#E9644C", "#7F7F7F")
 
-var_subcat <- expo_shiny %>% 
+# Variacion FOB
+var_subcat_fob <- expo_shiny %>% 
     filter(ano >= max(ano) - 1 & mes <= mesec) %>% 
     group_by(ano, cat_omc_1, cat_omc_2) %>% 
-    summarise(fob_mm = sum(fob) / 1000000) %>% 
+    summarise(y = sum(fob) / 1000000) %>% 
     group_by(cat_omc_2) %>% 
-    mutate(var = (fob_mm / lag(fob_mm, n = 1) - 1) * 100) %>% 
+    mutate(var = (y / lag(y, n = 1) - 1) * 100) %>% 
     as_tibble()
 
+# Variacion cantidades
+var_subcat_ton <- expo_shiny %>% 
+    filter(ano >= max(ano) - 1 & mes <= mesec) %>% 
+    group_by(ano, cat_omc_1, cat_omc_2) %>% 
+    summarise(y = sum(pnet_kg) / 1000000) %>% 
+    group_by(cat_omc_2) %>% 
+    mutate(var = (y / lag(y, n = 1) - 1) * 100) %>% 
+    as_tibble()
 
 # UI ----
 
@@ -67,19 +76,19 @@ sidebar <- dashboardSidebar(collapsed = TRUE,
     menuItem(
         "General",
         tabName = "general",
-        icon = icon("chart-line"),
+        icon = icon("calendar-check"),
         badgeLabel = "Actualizado",
         badgeColor = "green"
     ),
     menuItem("Por destino", tabName = "destino",
-             icon = icon("th"), 
+             icon = icon("globe"), # fly
              badgeLabel = "Prox.",
              badgeColor = "yellow"
              ),
     menuItem(
         "Por producto",
         tabName = "producto",
-        icon = icon("angellist"),
+        icon = icon("tags"), # barcode
         badgeLabel = "Prox.",
         badgeColor = "yellow"
     )
@@ -91,7 +100,7 @@ body <- dashboardBody(tabItems(
     ## Contenido de primer tab
     tabItem(
         tabName = "general",
-        ## Boxes deben ir en rows o cols
+        # Primer fila
         fluidRow(
             boxPlus(
                 title = "Categorias",
