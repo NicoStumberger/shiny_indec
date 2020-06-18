@@ -464,7 +464,7 @@ server <- function(input, output) {
             filter(mes == max(mes))
         
         ev <- evol_ant %>%
-            ggplot(aes(Mes, fob_tot_mm)) +
+            ggplot(aes(Mes, y)) +
             geom_line(aes(group = ano, color = paste0("2010-", max(ano)))) +
             geom_line(data = evol_0,
                       aes(group = ano, color = paste0(max(ano)))) +
@@ -474,7 +474,7 @@ server <- function(input, output) {
             ) +
             geom_point(data = evol_punto_1,
                        aes(Mes,
-                           fob_tot_mm,
+                           y,
                            color = paste0(max(
                                month(evol_1$mes,
                                      label = TRUE,
@@ -485,7 +485,9 @@ server <- function(input, output) {
             theme(panel.grid.major = element_blank()) +
             labs(# podria sacar eltexto del server
                 x = "",
-                y = "USD FOB en mill.",
+                y =  if_else(input$toggle1 == FALSE, 
+                             "En millones de USD",
+                             "En miles de toneladas"),
                 color = "Años") +
             # podría sacarlo del server
             scale_y_continuous(labels = scales::comma_format(big.mark = ".",
@@ -504,7 +506,7 @@ server <- function(input, output) {
                     ))
                 ),
                 # podría sacarlo del server
-                values = c("#BFBFBF",
+                values = c("#F2F2F2",
                            "#00ADE6",
                            "#3175AC",
                            "#3175AC")
@@ -516,8 +518,11 @@ server <- function(input, output) {
     
     # Grafico de pendientes
     output$pendiente <- renderPlotly({
-        g_pendiente <- subset_pendiente() %>%
-            ggplot(aes(as_factor(ano), fob_mm, group = cat_omc_2)) +
+        
+        g_pend_1 <- subset_pendiente() %>%
+                ggplot(aes(as_factor(ano), y, group = cat_omc_2))
+        
+        g_pendiente <- g_pend_1 +
             geom_line(aes(color = cat_omc_1)) +
             geom_point(aes(color = cat_omc_1),
                        size = 3.5) +
@@ -566,36 +571,25 @@ server <- function(input, output) {
                 axis.text.y = element_blank()
             ) +
             labs(x = "",
-                 y = "")
+                 y = if_else(input$toggle2 == FALSE,
+                             "En valores",
+                             "En volúmenes")
+            )
         
         ggplotly(g_pendiente)
     })
     
     # Por destino
-    # output$gif1 <- renderImage({
-    #     return(list(src = "data/working.gif", contentType = "image/gif"))
-    # }, deleteFile = FALSE)
     
     output$gif2 <- renderImage({
         return(list(src = "data/working.gif", contentType = "image/gif"))
     }, deleteFile = FALSE)
-    
-    # output$gif3 <- renderImage({
-    #     return(list(src = "data/working.gif", contentType = "image/gif"))
-    # }, deleteFile = FALSE)
-    
+
     # Por producto
-    # output$gif4 <- renderImage({
-    #     return(list(src = "data/working.gif", contentType = "image/gif"))
-    # }, deleteFile = FALSE)
-    
     output$gif5 <- renderImage({
         return(list(src = "data/working.gif", contentType = "image/gif"))
     }, deleteFile = FALSE)
     
-    # output$gif6 <- renderImage({
-    #     return(list(src = "data/working.gif", contentType = "image/gif"))
-    # }, deleteFile = FALSE)
 }
 
 
