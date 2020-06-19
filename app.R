@@ -49,23 +49,6 @@ mesec <- max(unique(ano_1$mes))
 
 color_cat_1 <- c("#00B1AC", "#00ADE6","#E9644C", "#7F7F7F")
 
-# Variacion FOB
-var_subcat_fob <- expo_shiny %>% 
-    filter(ano >= max(ano) - 1 & mes <= mesec) %>% 
-    group_by(ano, cat_omc_1, cat_omc_2) %>% 
-    summarise(y = sum(fob) / 1000000) %>% 
-    group_by(cat_omc_2) %>% 
-    mutate(var = (y / lag(y, n = 1) - 1) * 100) %>% 
-    as_tibble()
-
-# Variacion cantidades
-var_subcat_ton <- expo_shiny %>% 
-    filter(ano >= max(ano) - 1 & mes <= mesec) %>% 
-    group_by(ano, cat_omc_1, cat_omc_2) %>% 
-    summarise(y = sum(pnet_kg) / 1000000) %>% 
-    group_by(cat_omc_2) %>% 
-    mutate(var = (y / lag(y, n = 1) - 1) * 100) %>% 
-    as_tibble()
 
 # UI ----
 
@@ -120,6 +103,12 @@ body <- dashboardBody(tabItems(
                     ),
                     choiceValues = levels(expo_shiny$cat_omc_1)
                 ),
+                # actionButton("ver", "Actualiza la selección", ),
+                actionBttn(inputId = "ver", 
+                           label = NULL,
+                           style = "jelly", 
+                           color = "success",
+                           icon = icon("redo")),
                 closable = FALSE,
                 width = 4
             ),
@@ -225,21 +214,18 @@ ui <- dashboardPagePlus(
 # Server ----
 
 server <- function(input, output) {
-    subset_cat_1 <- reactive(ano_1 %>%
-                                 filter(cat_omc_1 %in% input$categoria))
-    subset_cat_0 <- reactive(ano_0 %>%
-                                 filter(cat_omc_1 %in% input$categoria))
-    subset_cat <- reactive(expo_shiny %>%
-                               filter(cat_omc_1 %in% input$categoria))
     
-    subset_pendiente <- reactive(
-        if(input$toggle2 == FALSE){
-            var_subcat_fob %>% 
-                filter(cat_omc_1 %in% input$categoria)
-        }else{
-            var_subcat_ton %>% 
-                filter(cat_omc_1 %in% input$categoria)
-        }
+    subset_cat_1 <- eventReactive(input$ver, {
+        ano_1 %>% filter(cat_omc_1 %in% input$categoria)
+    }, ignoreNULL = FALSE
+    )
+    subset_cat_0 <- eventReactive(input$ver, {
+        ano_0 %>% filter(cat_omc_1 %in% input$categoria)
+    }, ignoreNULL = FALSE
+    )
+    subset_cat <- eventReactive(input$ver, {
+        expo_shiny %>% filter(cat_omc_1 %in% input$categoria)  
+    }, ignoreNULL = FALSE
     )
     
     
@@ -433,7 +419,6 @@ server <- function(input, output) {
     })
     
     # Evolucion mensual
-    output$res1 <- renderPrint(input$toggle1)
     
     output$evol <- renderPlotly({
         if(input$toggle1 == FALSE) {
@@ -519,7 +504,30 @@ server <- function(input, output) {
     # Grafico de pendientes
     output$pendiente <- renderPlotly({
         
-        g_pend_1 <- subset_pendiente() %>%
+        if(input$toggle2 == FALSE){
+            
+            # Variacion FOB
+            subset_pendiente <- subset_cat() %>% 
+                filter(ano >= max(ano) - 1 & mes <= mesec) %>% 
+                group_by(ano, cat_omc_1, cat_omc_2) %>% 
+                summarise(y = sum(fob) / 1000000) %>% 
+                group_by(cat_omc_2) %>% 
+                mutate(var = (y / lag(y, n = 1) - 1) * 100) %>% 
+                as_tibble()  
+        }else{
+            
+            # Variacion cantidades
+            subset_pendiente <- subset_cat() %>% 
+                filter(ano >= max(ano) - 1 & mes <= mesec) %>% 
+                group_by(ano, cat_omc_1, cat_omc_2) %>% 
+                summarise(y = sum(pnet_kg) / 1000000) %>% 
+                group_by(cat_omc_2) %>% 
+                mutate(var = (y / lag(y, n = 1) - 1) * 100) %>% 
+                as_tibble()
+            
+        }
+        
+        g_pend_1 <- subset_pendiente %>%
                 ggplot(aes(as_factor(ano), y, group = cat_omc_2))
         
         g_pendiente <- g_pend_1 +
@@ -527,16 +535,16 @@ server <- function(input, output) {
             geom_point(aes(color = cat_omc_1),
                        size = 3.5) +
             geom_text(
-                data = subset(subset_pendiente(), ano < max(ano)),
+                data = subset(subset_pendiente, ano < max(ano)),
                 aes(color = cat_omc_1),
                 label = if_else(
-                    str_length(unique(subset_pendiente()$cat_omc_2)) > 22,
+                    str_length(unique(subset_pendiente$cat_omc_2)) > 22,
                     paste0(str_sub(
-                        unique(subset_pendiente()$cat_omc_2),
+                        unique(subset_pendiente$cat_omc_2),
                         start = 1,
                         end = 15
                     ), "..."),
-                    paste0(unique(subset_pendiente()$cat_omc_2))
+                    paste0(unique(subset_pendiente$cat_omc_2))
                 ),
                 size = 3,
                 nudge_x = -0.3,
@@ -545,11 +553,11 @@ server <- function(input, output) {
             geom_text(
                 aes(color = cat_omc_1),
                 label = if_else(
-                    is.na(subset_pendiente()$var),
+                    is.na(subset_pendiente$var),
                     paste0(""),
                     paste0(
                         format(
-                            subset_pendiente()$var,
+                            subset_pendiente$var,
                             digits = 2,
                             big.mark = ".",
                             decimal.mark = ","
