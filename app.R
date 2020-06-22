@@ -54,28 +54,31 @@ color_cat_1 <- c("#00B1AC", "#00ADE6","#E9644C", "#7F7F7F")
 
 # Sidebar
 
-sidebar <- dashboardSidebar(collapsed = TRUE,
-                            sidebarMenu(
-    menuItem(
-        "General",
-        tabName = "general",
-        icon = icon("calendar-check"),
-        badgeLabel = "Actualizado",
-        badgeColor = "green"
-    ),
-    menuItem("Por destino", tabName = "destino",
-             icon = icon("globe"), # fly
-             badgeLabel = "Prox.",
-             badgeColor = "yellow"
-             ),
-    menuItem(
-        "Por producto",
-        tabName = "producto",
-        icon = icon("tags"), # barcode
-        badgeLabel = "Prox.",
-        badgeColor = "yellow"
-    )
-))
+sidebar <- dashboardSidebar(sidebarMenu(
+                                menuItem(
+                                    "General",
+                                    tabName = "general",
+                                    icon = icon("calendar-check"),
+                                    badgeLabel = "Actualizado",
+                                    badgeColor = "green"
+                                ),
+                                menuItem(
+                                    "Por destino",
+                                    tabName = "destino",
+                                    icon = icon("globe"),
+                                    # fly
+                                    badgeLabel = "Prox.",
+                                    badgeColor = "yellow"
+                                ),
+                                menuItem(
+                                    "Por producto",
+                                    tabName = "producto",
+                                    icon = icon("tags"),
+                                    # barcode
+                                    badgeLabel = "Prox.",
+                                    badgeColor = "yellow"
+                                )
+                            ), collapsed = TRUE)
 
 # Body
     
