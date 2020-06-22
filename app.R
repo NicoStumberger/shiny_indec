@@ -108,9 +108,11 @@ body <- dashboardBody(tabItems(
                 ),
                 # actionButton("ver", "Actualiza la selección", ),
                 actionBttn(inputId = "ver", 
-                           label = NULL,
+                           label = "Actualizar",
                            style = "jelly", 
-                           color = "success",
+                           color = "success", 
+                           size = "sm", 
+                           block = TRUE,
                            icon = icon("redo")),
                 closable = FALSE,
                 width = 4
@@ -208,8 +210,7 @@ body <- dashboardBody(tabItems(
 # Union en una pagina ----
 ui <- dashboardPagePlus(
     header = dashboardHeaderPlus(
-        title = "Exportaciones",
-        fixed = FALSE),
+        title = "Exportaciones"),
     sidebar,
     body
 )
@@ -252,7 +253,7 @@ server <- function(input, output) {
             number_icon = if_else(number_0 >= 0, 
                                   "fa fa-caret-up", 
                                   "fa fa-caret-down"),
-            header = paste0("USD ", header_0, " (mill)"),
+            header = paste0(header_0, " (mill de USD)"),
             text = paste0("ENE", "-", 
                           max(ano_1$Mes), " ",
                           max(ano_1$ano)
@@ -270,7 +271,8 @@ server <- function(input, output) {
         big.mark = ".",
         decimal.mark = ",")
         
-        header_0 <- format(round(sum(subset_cat_1()$pnet_kg) / 1000000, digits = 0),
+        header_0 <- format(round(sum(subset_cat_1()$pnet_kg) / 1000000000, 
+                                 digits = 1),
                            big.mark = ".",
                            decimal.mark = ",")
         
@@ -280,7 +282,7 @@ server <- function(input, output) {
             number_icon = if_else(number_0 >= 0, 
                                   "fa fa-caret-up", 
                                   "fa fa-caret-down"),
-            header = paste0(header_0, " (miles de ton)"),
+            header = paste0(header_0, " (mill. de ton)"),
             text = paste0("ENE", "-", 
                           max(ano_1$Mes), " ",
                           max(ano_1$ano)
@@ -424,16 +426,17 @@ server <- function(input, output) {
     # Evolucion mensual
     
     output$evol <- renderPlotly({
-        if(input$toggle1 == FALSE) {
+        if(input$toggle1 == TRUE) {
             evol <-  subset_cat() %>%
                 group_by(ano, mes) %>%
-                summarise(y = sum(fob) / 1000000) %>%
+                # En millones de toneladas
+                summarise(y = sum(pnet_kg) / 1000000000) %>%
                 as_tibble() %>%
                 mutate(Mes = month(mes, label = TRUE))
         } else {
             evol <-  subset_cat() %>%
                 group_by(ano, mes) %>%
-                summarise(y = sum(pnet_kg) / 1000000) %>%
+                summarise(y =  sum(fob) / 1000000) %>%
                 as_tibble() %>%
                 mutate(Mes = month(mes, label = TRUE))
         }
@@ -453,11 +456,29 @@ server <- function(input, output) {
         
         ev <- evol_ant %>%
             ggplot(aes(Mes, y)) +
-            geom_line(aes(group = ano, color = paste0("2010-", max(ano)))) +
+            geom_line(aes(group = ano, 
+                          text = paste0(Mes, " ", ano,
+                                        "<br>", format(y, digits = 2, 
+                                                       big.mark = ".",
+                                                       decimal.mark = ",")
+                                        ),
+                          color = paste0("2010-", max(ano)))) +
             geom_line(data = evol_0,
-                      aes(group = ano, color = paste0(max(ano)))) +
+                      aes(group = ano,
+                          text = paste0(Mes, " ", ano,
+                                        "<br>", format(y, digits = 2, 
+                                                       big.mark = ".",
+                                                       decimal.mark = ",")
+                          ),
+                          color = paste0(max(ano)))) +
             geom_line(data = evol_1,
-                      aes(group = ano, color = paste0(max(ano))),
+                      aes(group = ano, 
+                          text = paste0(Mes, " ", ano,
+                                        "<br>", format(y, digits = 2, 
+                                                       big.mark = ".",
+                                                       decimal.mark = ",")
+                          ),
+                          color = paste0(max(ano))),
                       size = 1.2,
             ) +
             geom_point(data = evol_punto_1,
@@ -470,12 +491,13 @@ server <- function(input, output) {
                            ))),
                        size = 3) +
             theme_minimal() +
-            theme(panel.grid.major = element_blank()) +
-            labs(# podria sacar eltexto del server
+            theme(panel.grid.major = element_blank(), 
+                  legend.position = "bottom") +
+            labs(# podria sacar el texto del server
                 x = "",
                 y =  if_else(input$toggle1 == FALSE, 
                              "En millones de USD",
-                             "En miles de toneladas"),
+                             "En millones de toneladas"),
                 color = "Años") +
             # podría sacarlo del server
             scale_y_continuous(labels = scales::comma_format(big.mark = ".",
@@ -501,7 +523,8 @@ server <- function(input, output) {
             )
         
         # Render grafico
-        ggplotly(ev, tooltip = c("x", "y"))
+        ggplotly(ev, tooltip = "text") %>% 
+            layout(legend = list(orientation = "h", x = 0.05, y = -0.14))
     })
     
     # Grafico de pendientes
@@ -523,7 +546,8 @@ server <- function(input, output) {
             subset_pendiente <- subset_cat() %>% 
                 filter(ano >= max(ano) - 1 & mes <= mesec) %>% 
                 group_by(ano, cat_omc_1, cat_omc_2) %>% 
-                summarise(y = sum(pnet_kg) / 1000000) %>% 
+                # En millones de toneladas
+                summarise(y = round(sum(pnet_kg) / 1000000000, digits = 2)) %>% 
                 group_by(cat_omc_2) %>% 
                 mutate(var = (y / lag(y, n = 1) - 1) * 100) %>% 
                 as_tibble()
@@ -535,7 +559,14 @@ server <- function(input, output) {
         
         g_pendiente <- g_pend_1 +
             geom_line(aes(color = cat_omc_1)) +
-            geom_point(aes(color = cat_omc_1),
+            geom_point(aes(color = cat_omc_1, 
+                           text = paste0("<b>", cat_omc_1, "</b>",
+                                         "<br>", cat_omc_2,
+                                         "<br>", format(y, digits = 2,
+                                                        big.mark = ".", 
+                                                        decimal.mark = ",")
+                                         )
+                           ),
                        size = 3.5) +
             geom_text(
                 data = subset(subset_pendiente, ano < max(ano)),
@@ -583,11 +614,11 @@ server <- function(input, output) {
             ) +
             labs(x = "",
                  y = if_else(input$toggle2 == FALSE,
-                             "En valores",
-                             "En volúmenes")
+                             "En millones de USD",
+                             "En millones de toneladas")
             )
         
-        ggplotly(g_pendiente)
+        ggplotly(g_pendiente, tooltip = "text")
     })
     
     # Por destino
