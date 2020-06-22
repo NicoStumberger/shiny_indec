@@ -14,3 +14,4 @@ Mejoras:
 * Los nombres de países con tildes y eñes en el mapa aparecían con caracteres especiales. Esto ya está solucionado.
 * Botón verde de "Actualizar" en la caja de selección: esto quizás no es muy útil para el usuario, pero de esta forma el código es más eficiente.
 
+Como siempre, a disposición para recibir comentarios y porpuestas de mejoras.
