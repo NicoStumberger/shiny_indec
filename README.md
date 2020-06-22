@@ -13,5 +13,6 @@ Mejoras:
 * Los tooltips (ventanitas que aparecen cuando pasas el mouse por encima) de los gráficos están más limpios y aparece más clara la data.
 * Los nombres de países con tildes y eñes en el mapa aparecían con caracteres especiales. Esto ya está solucionado.
 * Botón verde de "Actualizar" en la caja de selección: esto quizás no es muy útil para el usuario, pero de esta forma el código es más eficiente.
+* Actualiza los datos a los más recientes provistos por INDEC (Enero - Abril 2020).
 
 Como siempre, a disposición para recibir comentarios y porpuestas de mejoras.
