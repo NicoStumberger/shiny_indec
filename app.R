@@ -13,22 +13,48 @@ library(shinydashboardPlus) # cuenta con algunas funcionalidades que mejoran el 
 library(shinyWidgets)
 
 
+# Setea el el Sys locale en ingles
+Sys.setlocale("LC_TIME", "English")
+
 # Carga de Datasets ----
 expo_shiny <- readRDS("data/expo_shiny_post2010.RDS")
 
 desc_ncm <- readRDS("data/desc_ncm.RDS")
 
+# Formula para que los meses en ingles, aparezcan en espanol en el server
+english_months <- c("jan", "feb", "mar", "apr", 
+                    "may", "jun", "jul", "aug", 
+                    "sep", "oct", "nov", "dec")
+spanish_months <- c("Ene", "Feb", "Mar", "Abr", 
+                    "May", "Jun", "Jul", "Ago", 
+                    "Sep", "Oct", "Nov", "Dic")
+
+
+to_spanish_dict <- spanish_months
+names(to_spanish_dict) <- english_months
+
+translate_date <- function(date, output_lang = "es"){
+    if(output_lang == "es"){
+        str_replace_all(tolower(date), to_spanish_dict)
+    }
+}
+
+
+
+# Armado de tablas
+
 categ <- unique(expo_shiny$cat_omc_1)
 
-ano_1 <- expo_shiny %>% 
-    filter(ano == max(ano)) %>% 
-    left_join(desc_ncm) %>% 
-    mutate(Mes = month(mes, label = TRUE, abbr = TRUE))
+ano_1 <- expo_shiny %>%
+    filter(ano == max(ano)) %>%
+    left_join(desc_ncm) %>%
+    mutate(Mes = translate_date(month(mes, label = TRUE, abbr = TRUE)))
 
-ano_0 <- expo_shiny %>% 
-    filter(ano == max(ano) - 1 & mes <= max(ano_1$mes)) %>% 
-    left_join(desc_ncm) %>% 
-    mutate(Mes = month(mes, label = TRUE, abbr = TRUE))
+ano_0 <- expo_shiny %>%
+    filter(ano == max(ano) - 1 & mes <= max(ano_1$mes)) %>%
+    left_join(desc_ncm) %>%
+    mutate(Mes = translate_date(month(mes, label = TRUE)))
+
 
 # Mapa ----
 
