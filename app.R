@@ -11,6 +11,7 @@ library(plotly) # para los graficos interactivos
 library(lubridate) # para manejar fechas
 library(shinydashboardPlus) # cuenta con algunas funcionalidades que mejoran el dash
 library(shinyWidgets)
+# library(semantic.dashboard)
 
 
 # Setea el el Sys locale en ingles
@@ -108,7 +109,15 @@ sidebar <- dashboardSidebar(sidebarMenu(
 
 # Body
     
-body <- dashboardBody(tabItems(
+body <- dashboardBody(
+    tags$head(tags$style(HTML('
+      .main-header .logo {
+        font-family: "Calibri";
+        font-weight: bold;
+        font-size: 24px;
+      }
+      '))),
+    tabItems(
     ## Contenido de primer tab
     tabItem(
         tabName = "general",
@@ -132,7 +141,6 @@ body <- dashboardBody(tabItems(
                     ),
                     choiceValues = levels(expo_shiny$cat_omc_1)
                 ),
-                # actionButton("ver", "Actualiza la selección", ),
                 actionBttn(inputId = "ver", 
                            label = "Actualizar",
                            style = "jelly", 
@@ -297,10 +305,15 @@ server <- function(input, output) {
         big.mark = ".",
         decimal.mark = ",")
         
-        header_0 <- format(round(sum(subset_cat_1()$pnet_kg) / 1000000000, 
-                                 digits = 1),
-                           big.mark = ".",
-                           decimal.mark = ",")
+        
+        header_0 <-
+            format(
+                round(sum(subset_cat_1()$pnet_kg) / 1000000000,
+                      digits = 2),
+                big.mark = ".",
+                decimal.mark = ",",
+                digits = 2
+            )
         
         descriptionBlock(
             number = paste0(number_0," %"),
@@ -458,13 +471,15 @@ server <- function(input, output) {
                 # En millones de toneladas
                 summarise(y = sum(pnet_kg) / 1000000000) %>%
                 as_tibble() %>%
-                mutate(Mes = month(mes, label = TRUE))
+                mutate(Mes = factor(translate_date(month(mes, label = TRUE)),
+                                    levels = spanish_months))
         } else {
             evol <-  subset_cat() %>%
                 group_by(ano, mes) %>%
                 summarise(y =  sum(fob) / 1000000) %>%
                 as_tibble() %>%
-                mutate(Mes = month(mes, label = TRUE))
+                mutate(Mes = factor(translate_date(month(mes, label = TRUE)),
+                                    levels = spanish_months))
         }
         
         evol_ant <- evol %>%
@@ -513,8 +528,8 @@ server <- function(input, output) {
                            color = paste0(max(
                                month(evol_1$mes,
                                      label = TRUE,
-                                     abbr = FALSE)
-                           ))),
+                                     abbr = FALSE)))
+                           ),
                        size = 3) +
             theme_minimal() +
             theme(panel.grid.major = element_blank(), 
@@ -606,7 +621,7 @@ server <- function(input, output) {
                     ), "..."),
                     paste0(unique(subset_pendiente$cat_omc_2))
                 ),
-                size = 3,
+                size = 2.5,
                 nudge_x = -0.3,
                 hjust = 0,
             ) +
@@ -625,14 +640,17 @@ server <- function(input, output) {
                         " %"
                     )
                 ),
-                size = 3,
-                nudge_x = 0.15,
+                size = 2.8,
+                nudge_x = 0.20,
                 hjust = 0
             ) +
-            scale_color_manual(values = color_cat_1) +
+            scale_color_manual(
+                breaks = unique(expo_shiny$cat_omc_1),
+                values = color_cat_1) +
             scale_y_log10() +
             theme_minimal() +
             theme(
+                plot.margin = unit(c(1.5,0,1,0), "cm"),
                 legend.position = "none",
                 legend.title = element_blank(),
                 panel.grid = element_blank(),
