@@ -81,6 +81,7 @@ color_cat_1 <- c("#00B1AC", "#00ADE6","#E9644C", "#7F7F7F")
 
 # Sidebar
 
+
 sidebar <- dashboardSidebar(sidebarMenu(
                                 menuItem(
                                     "General",
@@ -105,7 +106,9 @@ sidebar <- dashboardSidebar(sidebarMenu(
                                     badgeLabel = "Prox.",
                                     badgeColor = "yellow"
                                 )
-                            ), collapsed = TRUE)
+                            ),
+                            disable = FALSE,
+                            collapsed = TRUE)
 
 # Body
     
@@ -116,6 +119,14 @@ body <- dashboardBody(
         font-weight: bold;
         font-size: 24px;
       }
+      '))),
+    tags$head(tags$style(HTML('
+        .skin-blue .main-header .logo {
+          background-color: #3c8dbc;
+        }
+        .skin-blue .main-header .logo:hover {
+          background-color: #3c8dbc;
+        }
       '))),
     tabItems(
     ## Contenido de primer tab
@@ -154,13 +165,13 @@ body <- dashboardBody(
             boxPlus(
                 solidHeader = FALSE,
                 title = paste0(
-                    "Exportaciones del periodo Ene",
+                    "Variación interanual Ene",
                     " - ",
-                    max(ano_1$Mes),
-                    " y variación interanual"
+                    max(ano_1$Mes), " ",
+                    max(ano_1$ano)
                 ),
                 width = 8,
-                status = "danger",
+                # status = "info",
                 closable = FALSE,
                 footer = fluidRow(# descripcion general del periodo
                     column(width = 6,
@@ -241,10 +252,40 @@ body <- dashboardBody(
     )
 ))
 
+header <- dashboardHeaderPlus(
+    title = paste0("Mapa de las Exportaciones", 
+                   # max(ano_1$Mes), 
+                   " ", 
+                   max(ano_1$ano)),
+    # fixed = TRUE,
+    # left_menu = tagList(
+    #     dropdownBlock(
+    #         id = "mydropdown",
+    #         title = "Exportaciones argentinas 2020",
+    #         icon = icon("sliders"),
+    #         prettySwitch(
+    #             inputId = "switch4",
+    #             label = "Fill switch with status:",
+    #             fill = TRUE,
+    #             status = "primary"
+    #         ),
+    #         prettyCheckboxGroup(
+    #             inputId = "checkgroup2",
+    #             label = "Click me!",
+    #             thick = TRUE,
+    #             choices = c("Click me !", "Me !", "Or me !"),
+    #             animation = "pulse",
+    #             status = "info"
+    #         )
+    #     )
+    # ),
+    titleWidth = 450
+    )
+
+
 # Union en una pagina ----
 ui <- dashboardPagePlus(
-    header = dashboardHeaderPlus(
-        title = "Exportaciones"),
+    header = header,
     sidebar,
     body
 )
@@ -271,35 +312,35 @@ server <- function(input, output) {
     output$desc_ano_1 <- renderUI({
         
         number_0 <- format(round((
-            sum(subset_cat_1()$fob) / sum(subset_cat_0()$fob) - 1
+            sum(subset_cat_1()$fob, na.rm = TRUE) / sum(subset_cat_0()$fob, na.rm = TRUE) - 1
         ) * 100,
         digits = 1),
         big.mark = ".",
         decimal.mark = ",")
         
-        header_0 <- format(round(sum(subset_cat_1()$fob) / 1000000, digits = 0),
+        header_0 <- format(round(sum(subset_cat_1()$fob, na.rm = TRUE) / 1000000, digits = 0),
                            big.mark = ".",
                            decimal.mark = ",")
         
         descriptionBlock(
             number = paste0(number_0," %"),
-            number_color = if_else(number_0 >= 0, "green", "red"),
-            number_icon = if_else(number_0 >= 0, 
-                                  "fa fa-caret-up", 
-                                  "fa fa-caret-down"),
+            numberColor = if_else(number_0 >= 0, "green", "red"),
+            numberIcon = if_else(number_0 >= 0,
+                                  "caret-up",
+                                  "caret-down"),
             header = paste0(header_0, " (mill de USD)"),
             text = paste0("ENE", "-", 
-                          max(ano_1$Mes), " ",
+                          max(ano_1$mes), " ",
                           max(ano_1$ano)
                           ),
-            right_border = TRUE
+            rightBorder = TRUE
         )
     })
     
     output$desc_ano_1_ton <- renderUI({
         
         number_0 <- format(round((
-            sum(subset_cat_1()$pnet_kg) / sum(subset_cat_0()$pnet_kg) - 1
+            sum(subset_cat_1()$pnet_kg, na.rm = TRUE) / sum(subset_cat_0()$pnet_kg, na.rm = TRUE) - 1
         ) * 100,
         digits = 1),
         big.mark = ".",
@@ -308,19 +349,18 @@ server <- function(input, output) {
         
         header_0 <-
             format(
-                round(sum(subset_cat_1()$pnet_kg) / 1000000000,
-                      digits = 2),
+                round(sum(subset_cat_1()$pnet_kg, na.rm = TRUE) / 1000000000,
+                      digits = 1),
                 big.mark = ".",
-                decimal.mark = ",",
-                digits = 2
+                decimal.mark = ","
             )
         
         descriptionBlock(
             number = paste0(number_0," %"),
-            number_color = if_else(number_0 >= 0, "green", "red"),
-            number_icon = if_else(number_0 >= 0, 
-                                  "fa fa-caret-up", 
-                                  "fa fa-caret-down"),
+            numberColor = if_else(number_0 >= 0, "green", "red"),
+            numberIcon = if_else(number_0 >= 0, 
+                                  "caret-up", 
+                                  "caret-down"),
             header = paste0(header_0, " (mill. de ton)"),
             text = paste0("ENE", "-", 
                           max(ano_1$Mes), " ",
@@ -334,12 +374,12 @@ server <- function(input, output) {
         # Preparacion de dataset
         ano_0_fob <- subset_cat_0() %>%
             group_by(iso3) %>%
-            summarise(fob_mm_tot_0 = sum(fob) / 1000000)
+            summarise(fob_mm_tot_0 = sum(fob, na.rm = TRUE) / 1000000)
         
         top_p <- subset_cat_1() %>%
             group_by(iso3, desc_ncm) %>%
-            summarise(fob_mm = sum(fob) / 1000000) %>%
-            mutate(fob_mm_tot = sum(fob_mm),
+            summarise(fob_mm = sum(fob, na.rm = TRUE) / 1000000) %>%
+            mutate(fob_mm_tot = sum(fob_mm, na.rm = TRUE),
                    part = fob_mm / fob_mm_tot * 100) %>%
             arrange(iso3, desc(part)) %>%
             top_n(n = 3, wt = part) %>%
@@ -367,14 +407,14 @@ server <- function(input, output) {
         popup <- if_else(
             is.na(mapa$fob_mm_tot),
             paste0(
-                "<b>",
+                "<style='font-family:calibri;'>", "<b>",
                 mapa$nmbr_tr,
                 "</b>",
                 "<br>",
-                "Sin datos en el periodo"
+                "<style='font-family:calibri;'> Sin datos en el periodo"
             ),
             paste0(
-                "<b>",
+                "<style='font-family:calibri;'>", "<b>",
                 mapa$nmbr_tr,
                 " | ",
                 "USD ",
@@ -383,8 +423,7 @@ server <- function(input, output) {
                     big.mark = ".",
                     decimal.mark = ","
                 ),
-                " mill.",
-                "</b>",
+                " mill.", "</b>",
                 "<br>",
                 "Var. interanual: ",
                 format(round(mapa$ano_0_var, 1),
@@ -409,7 +448,7 @@ server <- function(input, output) {
                        decimal.mark = ","),
                 "%",
                 " | ",
-                mapa$desc_ncm_top_3
+                mapa$desc_ncm_top_3, "</p>"
             )
         )
         
@@ -443,14 +482,14 @@ server <- function(input, output) {
                 ),
                 label = mapa$nmbr_tr,
                 labelOptions = labelOptions(
-                    style = list("front-weight" = "normal", padding = "3px 8px"),
+                    style = list("font-family" = "Calibri", padding = "3px 8px"),
                     textsize = "15px",
                     direction = "auto"
                 ),
                 popup = popup,
                 popupOptions = popupOptions(
-                    style = list("front-weight" = "normal", padding = "3px 8px"),
-                    textsize = "20px",
+                    style = list("font-family" = "Calibri", padding = "3px 8px"),
+                    # textsize = "20px",
                     direction = "auto"
                 )
             ) %>%
@@ -469,14 +508,14 @@ server <- function(input, output) {
             evol <-  subset_cat() %>%
                 group_by(ano, mes) %>%
                 # En millones de toneladas
-                summarise(y = sum(pnet_kg) / 1000000000) %>%
+                summarise(y = sum(pnet_kg, na.rm = TRUE) / 1000000000) %>%
                 as_tibble() %>%
                 mutate(Mes = factor(translate_date(month(mes, label = TRUE)),
                                     levels = spanish_months))
         } else {
             evol <-  subset_cat() %>%
                 group_by(ano, mes) %>%
-                summarise(y =  sum(fob) / 1000000) %>%
+                summarise(y =  sum(fob, na.rm = TRUE) / 1000000) %>%
                 as_tibble() %>%
                 mutate(Mes = factor(translate_date(month(mes, label = TRUE)),
                                     levels = spanish_months))
@@ -532,7 +571,8 @@ server <- function(input, output) {
                            ),
                        size = 3) +
             theme_minimal() +
-            theme(panel.grid.major = element_blank(), 
+            theme(text = element_text(family = "Calibri"),
+                  panel.grid.major = element_blank(), 
                   legend.position = "bottom") +
             labs(# podria sacar el texto del server
                 x = "",
@@ -577,7 +617,7 @@ server <- function(input, output) {
             subset_pendiente <- subset_cat() %>% 
                 filter(ano >= max(ano) - 1 & mes <= mesec) %>% 
                 group_by(ano, cat_omc_1, cat_omc_2) %>% 
-                summarise(y = sum(fob) / 1000000) %>% 
+                summarise(y = sum(fob, na.rm = TRUE) / 1000000) %>% 
                 group_by(cat_omc_2) %>% 
                 mutate(var = (y / lag(y, n = 1) - 1) * 100) %>% 
                 as_tibble()  
@@ -588,7 +628,7 @@ server <- function(input, output) {
                 filter(ano >= max(ano) - 1 & mes <= mesec) %>% 
                 group_by(ano, cat_omc_1, cat_omc_2) %>% 
                 # En millones de toneladas
-                summarise(y = round(sum(pnet_kg) / 1000000000, digits = 2)) %>% 
+                summarise(y = round(sum(pnet_kg, na.rm = TRUE) / 1000000000, digits = 2)) %>% 
                 group_by(cat_omc_2) %>% 
                 mutate(var = (y / lag(y, n = 1) - 1) * 100) %>% 
                 as_tibble()
@@ -621,7 +661,7 @@ server <- function(input, output) {
                     ), "..."),
                     paste0(unique(subset_pendiente$cat_omc_2))
                 ),
-                size = 2.5,
+                size = 2.8,
                 nudge_x = -0.3,
                 hjust = 0,
             ) +
@@ -640,7 +680,7 @@ server <- function(input, output) {
                         " %"
                     )
                 ),
-                size = 2.8,
+                size = 3,
                 nudge_x = 0.20,
                 hjust = 0
             ) +
@@ -649,12 +689,12 @@ server <- function(input, output) {
                 values = color_cat_1) +
             scale_y_log10() +
             theme_minimal() +
-            theme(
-                plot.margin = unit(c(1.5,0,1,0), "cm"),
-                legend.position = "none",
-                legend.title = element_blank(),
-                panel.grid = element_blank(),
-                axis.text.y = element_blank()
+            theme(text = element_text(family = "Calibri"),
+                  plot.margin = unit(c(1.5,0,1,0), "cm"),
+                  legend.position = "none",
+                  legend.title = element_blank(),
+                  panel.grid = element_blank(),
+                  axis.text.y = element_blank()
             ) +
             labs(x = "",
                  y = if_else(input$toggle2 == FALSE,
