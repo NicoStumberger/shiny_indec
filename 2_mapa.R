@@ -36,11 +36,13 @@ saveRDS(desc_ncm, file = "data/desc_ncm.RDS")
 
 # Preparar dataset para mapa
 ano_1 <- readRDS("data/expo_shiny_post2010.RDS") %>% 
+        filter(!is.na(fob)) %>%
         mutate(iso3 = as_factor(iso3)) %>% 
         filter(ano == max(ano)) %>% 
         left_join(desc_ncm)
 
-ano_0 <- readRDS("data/expo_shiny_post2010.RDS") %>% 
+ano_0 <- readRDS("data/expo_shiny_post2010.RDS") %>%
+        filter(!is.na(fob)) %>%
         filter(ano == max(ano) - 1 & mes <= max(ano_1$mes)) %>% 
         left_join(desc_ncm)
 
@@ -81,7 +83,7 @@ top_p <- ano_1 %>%
 mapa <- left_join(mapa_crudo, top_p, by = c("ISO3_CO" = "iso3"))
 # El iso3 debiera ser factor y tener los mismos leves que ISO_CO
 
-# Con ani_join se que registro de exportaciones me queda afuera del mapa.
+# Con ani_join se cual registro de exportaciones me queda afuera del mapa.
 # Veo que solo me quedo afuera el NA (los que no tienen iso3)
 anti_join(top_p, mapa_crudo, by = c("iso3" = "ISO3_CO"))
 

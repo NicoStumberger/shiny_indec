@@ -18,8 +18,10 @@ library(shinyWidgets)
 Sys.setlocale("LC_TIME", "English")
 
 # Carga de Datasets ----
-expo_shiny <- readRDS("data/expo_shiny_post2010.RDS")
+expo_shiny <- readRDS("data/expo_shiny_post2010.RDS") %>% 
+  filter(!is.na(fob))
 
+skimr::skim(expo_shiny)
 desc_ncm <- readRDS("data/desc_ncm.RDS")
 
 # Formula para que los meses en ingles, aparezcan en espanol en el server
@@ -29,6 +31,27 @@ english_months <- c("jan", "feb", "mar", "apr",
 spanish_months <- c("Ene", "Feb", "Mar", "Abr", 
                     "May", "Jun", "Jul", "Ago", 
                     "Sep", "Oct", "Nov", "Dic")
+
+# Tabla diccionariio de meses para facilitar la escritura en espanol en los titulos
+
+dic_meses <- tribble(
+  ~mes, ~Mes, ~Mes_completo,
+  1, "Ene", "Enero",
+  2, "Feb", "Febrero",
+  3, "Mar", "Marzo",
+  4, "Abr", "Abril",
+  5, "May", "Mayo",
+  6, "Jun", "Junio",
+  7, "Jul", "Julio",
+  8, "Ago", "Agosto",
+  9, "Sep", "Septiembre",
+  10, "Oct", "Octubre",
+  11, "Nov", "Noviembre",
+  12, "Dic", "Diciembre"
+)
+
+
+# quality_var_tibble$qual_mostrar[quality_var_tibble$quality == input$quality]
 
 
 to_spanish_dict <- spanish_months
@@ -50,6 +73,8 @@ ano_1 <- expo_shiny %>%
     filter(ano == max(ano)) %>%
     left_join(desc_ncm) %>%
     mutate(Mes = translate_date(month(mes, label = TRUE, abbr = TRUE)))
+
+
 
 ano_0 <- expo_shiny %>%
     filter(ano == max(ano) - 1 & mes <= max(ano_1$mes)) %>%
@@ -81,33 +106,50 @@ color_cat_1 <- c("#00B1AC", "#00ADE6","#E9644C", "#7F7F7F")
 
 # Sidebar
 
+header <- dashboardHeaderPlus(
+  # title = paste0("Mapa de las Exportaciones", 
+  #                " ", 
+  #                max(ano_1$ano)),
+  # fixed = TRUE,
+  # left_menu = tagList(
+  #     dropdownBlock(
+  #         id = "mydropdown",
+  #         title = "Exportaciones argentinas 2020",
+  #         icon = icon("sliders"),
+  #         prettySwitch(
+  #             inputId = "switch4",
+  #             label = "Fill switch with status:",
+  #             fill = TRUE,
+  #             status = "primary"
+  #         ),
+  #         prettyCheckboxGroup(
+  #             inputId = "checkgroup2",
+  #             label = "Click me!",
+  #             thick = TRUE,
+  #             choices = c("Click me !", "Me !", "Or me !"),
+  #             animation = "pulse",
+  #             status = "info"
+  #         )
+  #     )
+  # ),
+  # titleWidth = 450
+)
 
 sidebar <- dashboardSidebar(sidebarMenu(
                                 menuItem(
-                                    "General",
+                                    "Coyuntura",
                                     tabName = "general",
-                                    icon = icon("calendar-check"),
+                                    icon = icon("chart-line"),
                                     badgeLabel = "Actualizado",
                                     badgeColor = "green"
                                 ),
                                 menuItem(
-                                    "Por destino",
+                                    "Ayuda",
                                     tabName = "destino",
-                                    icon = icon("globe"),
-                                    # fly
-                                    badgeLabel = "Prox.",
-                                    badgeColor = "yellow"
-                                ),
-                                menuItem(
-                                    "Por producto",
-                                    tabName = "producto",
-                                    icon = icon("tags"),
-                                    # barcode
-                                    badgeLabel = "Prox.",
-                                    badgeColor = "yellow"
+                                    icon = icon("info")
                                 )
                             ),
-                            disable = FALSE,
+                            disable = TRUE,
                             collapsed = TRUE)
 
 # Body
@@ -132,6 +174,25 @@ body <- dashboardBody(
     ## Contenido de primer tab
     tabItem(
         tabName = "general",
+        fluidRow(
+          widgetUserBox(
+            title = tags$h1("Mapa de las exportaciones"),
+            subtitle = tags$h4(paste("Periodo Enero - ", 
+                             dic_meses$Mes_completo[dic_meses$mes == max(ano_1$mes)], 
+                             max(ano_1$ano))
+                             ),
+            width = 12,
+            type = 2,
+            # src = "https://adminlte.io/themes/AdminLTE/dist/img/user7-128x128.jpg",
+            color = "primary",
+            "Toda la información publicada en este tablero trata sobre 
+            las exportaciones argentinas durante el periodo arriba 
+            mencionado y su correspondiente interanual, a menos que se 
+            explicite lo contrario.",
+            footer = "La fuente de información es AAICI en base a datos de 
+            INDEC y a la categorización por sectores y subsectores de la OMC."
+          ),
+        ),
         # Primer fila
         fluidRow(
             boxPlus(
@@ -164,12 +225,7 @@ body <- dashboardBody(
             ),
             boxPlus(
                 solidHeader = FALSE,
-                title = paste0(
-                    "Variación interanual Ene",
-                    " - ",
-                    max(ano_1$Mes), " ",
-                    max(ano_1$ano)
-                ),
+                title = "Totales y variación interanual en valores y cantidades",
                 width = 8,
                 # status = "info",
                 closable = FALSE,
@@ -182,7 +238,9 @@ body <- dashboardBody(
         ),
         # Segunda fila MAPA
         fluidRow(
-            box(
+            box(title = "¿Cuáles son los principales destinos?",
+                p("Click en cada país para ver valores, variación y principales
+                  productos exportados en el periodo"),
                 width = 12,
                 leafletOutput("mapa")
             )
@@ -190,7 +248,10 @@ body <- dashboardBody(
         # Tercer fila 
         fluidRow(
             box(
-                title = "Evolución mensual de las exportaciones",
+                title = "¿Cómo evolucionan las exportaciones comparando con años anteriores?",
+                tags$h6(em("Pasa el mouse por encima del gráfico para ver detalles,
+                  clickea las leyendas para quitar información del gráfico.
+                  También podés ver la evolución en cantidades haciendo click al pie del gráfico.")),
                 solidHeader = TRUE,
                 plotlyOutput(outputId = "evol"),
                 width = 6,
@@ -221,7 +282,7 @@ body <- dashboardBody(
     ## Contenido del sgdo tab
     tabItem(
         tabName = "destino",
-        h2("Exportaciones por destino"),
+        h2("Preguntas frecuentes"),
         fluidRow(
             box(width = 4,
                 br(),
@@ -233,54 +294,10 @@ body <- dashboardBody(
                 br(),
                 imageOutput("gif3", height = "auto"))
         )
-    ),
-    ## Tercer tab
-    tabItem(
-        tabName = "producto",
-        h2("Exportaciones por producto"),
-        fluidRow(
-            box(width = 4,
-                br(),
-                imageOutput("gif4", height = "auto")),
-            box(width = 4,
-                br(),
-                imageOutput("gif5", height = "auto")),
-            box(width = 4,
-                br(),
-                imageOutput("gif6", height = "auto"))
-        )
     )
 ))
 
-header <- dashboardHeaderPlus(
-    title = paste0("Mapa de las Exportaciones", 
-                   # max(ano_1$Mes), 
-                   " ", 
-                   max(ano_1$ano)),
-    # fixed = TRUE,
-    # left_menu = tagList(
-    #     dropdownBlock(
-    #         id = "mydropdown",
-    #         title = "Exportaciones argentinas 2020",
-    #         icon = icon("sliders"),
-    #         prettySwitch(
-    #             inputId = "switch4",
-    #             label = "Fill switch with status:",
-    #             fill = TRUE,
-    #             status = "primary"
-    #         ),
-    #         prettyCheckboxGroup(
-    #             inputId = "checkgroup2",
-    #             label = "Click me!",
-    #             thick = TRUE,
-    #             choices = c("Click me !", "Me !", "Or me !"),
-    #             animation = "pulse",
-    #             status = "info"
-    #         )
-    #     )
-    # ),
-    titleWidth = 450
-    )
+
 
 
 # Union en una pagina ----
@@ -330,7 +347,7 @@ server <- function(input, output) {
                                   "caret-down"),
             header = paste0(header_0, " (mill de USD)"),
             text = paste0("ENE", "-", 
-                          max(ano_1$mes), " ",
+                          dic_meses$Mes[dic_meses$mes == max(ano_1$mes)], " ",
                           max(ano_1$ano)
                           ),
             rightBorder = TRUE
@@ -363,7 +380,7 @@ server <- function(input, output) {
                                   "caret-down"),
             header = paste0(header_0, " (mill. de ton)"),
             text = paste0("ENE", "-", 
-                          max(ano_1$Mes), " ",
+                          dic_meses$Mes[dic_meses$mes == max(ano_1$mes)], " ",
                           max(ano_1$ano)
             )
         )
@@ -564,6 +581,11 @@ server <- function(input, output) {
             geom_point(data = evol_punto_1,
                        aes(Mes,
                            y,
+                           text = paste0(Mes, " ", ano,
+                                         "<br>", format(y, digits = 2, 
+                                                        big.mark = ".",
+                                                        decimal.mark = ",")
+                           ),
                            color = paste0(max(
                                month(evol_1$mes,
                                      label = TRUE,
@@ -705,14 +727,9 @@ server <- function(input, output) {
         ggplotly(g_pendiente, tooltip = "text")
     })
     
-    # Por destino
+    # Ayuda, preguntas frecuentes y contacto
     
     output$gif2 <- renderImage({
-        return(list(src = "data/working.gif", contentType = "image/gif"))
-    }, deleteFile = FALSE)
-
-    # Por producto
-    output$gif5 <- renderImage({
         return(list(src = "data/working.gif", contentType = "image/gif"))
     }, deleteFile = FALSE)
     

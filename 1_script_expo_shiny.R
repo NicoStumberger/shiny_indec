@@ -107,7 +107,10 @@ expo_shiny$cat_omc_2 <- factor(expo_shiny$cat_omc_2,
                                        "Otros"
                                ))
 
-skimr::skim(expo_shiny)     
+skimr::skim(expo_shiny)
+
+expo_shiny %>% 
+        filter(is.na(pnet_kg))
 
 ## Desde 2002
 saveRDS(expo_shiny, "output/expo_shiny.RDS")
