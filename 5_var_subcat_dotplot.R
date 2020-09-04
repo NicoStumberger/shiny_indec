@@ -60,7 +60,7 @@ translate_date <- function(date, output_lang = "es"){
         }
 }
 
-# Armado de tablas
+# Armado de tablas ----
 
 categ <- unique(expo_shiny$cat_omc_1)
 
@@ -79,33 +79,68 @@ mesec <- max(unique(ano_1$mes))
 color_cat_1 <- c("#00B1AC", "#00ADE6","#E9644C", "#7F7F7F")
 
 
-# Reactive expressions
+# Reactive expressions ----
+
 
 subset_dotplot <- expo_shiny %>% 
+        # mutate(cat_omc_2 = droplevels(cat_omc_2),
+        #        cat_omc_1 = droplevels(cat_omc_1)) %>%
+        # mutate(cat_omc_2 = as.character(cat_omc_2),
+        #        cat_omc_1 = as.character(cat_omc_1)) %>%
         filter(ano >= max(ano) - 1 & mes <= mesec) %>% 
         group_by(ano, cat_omc_1, cat_omc_2) %>% 
         summarise(y = sum(fob, na.rm = TRUE) / 1000000) %>% 
-        pivot_wider(names_from = ano, values_from = y) %>% 
-        janitor::clean_names() %>% 
-        mutate(var = (x2020 / x2019  - 1) * 100) %>% 
-        arrange(desc(x2020))
+        pivot_wider(names_from = ano, values_from = y) %>%
+        rename(ano_0 = 3,
+               ano_1 = 4) %>% 
+        mutate(var = (ano_1 / ano_0  - 1) * 100) %>% 
+        arrange(ano_1)
 
-subset_dotplot$cat_omc_2 <- as_factor(subset_dotplot$cat_omc_2)
 
-
-subset_dotplot %>%
-        ggplot(aes(x2020, cat_omc_2)) +
+# RenderPlotly ----
+dotplot <- subset_dotplot %>%
+        ggplot(aes(ano_1, reorder(cat_omc_2, ano_1))) +
         geom_segment(aes(
-                x = x2020,
-                y = cat_omc_2,
-                xend = x2019,
-                yend = cat_omc_2,
-                color = cat_omc_2
+                x = ano_1,
+                y = reorder(cat_omc_2, ano_1),
+                xend = ano_0,
+                yend = reorder(cat_omc_2, ano_1),
+                color = cat_omc_1
         )) +
-        geom_point(aes(color = cat_omc_1), size = 2) +
-        geom_point(aes(x2019, cat_omc_2, color = cat_omc_1),
-                   alpha = 0.3,
-                   size = 2) +
+        geom_point(aes(
+                color = cat_omc_1,
+                text = paste(
+                        cat_omc_2,
+                        "<br>",
+                        "2020",
+                        " ",
+                        round(ano_1, 2),
+                        "<br>",
+                        round(var, 2)
+                )
+        ),
+        size = 2) +
+        geom_point(
+                aes(
+                        ano_0,
+                        reorder(cat_omc_2, ano_1),
+                        color = cat_omc_1,
+                        text = paste(cat_omc_2,
+                                     "<br>",
+                                     "2019",
+                                     " ",
+                                     round(ano_0, 2),
+                                     "<br>")
+                ),
+                alpha = 0.3,
+                size = 2
+        ) +
         theme_minimal() +
         theme(legend.position = "none") +
-        scale_x_log10()
+        scale_x_log10() +
+        labs(x = "USD",
+             y = "")
+
+dotplot
+
+ggplotly(dotplot, tooltip = "text")

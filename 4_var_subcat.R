@@ -104,3 +104,5 @@ ggplotly(graf_subcat)
 
 # convertir a ggplotly LISTO. 
 # con algunos detalles para mejorar
+
+
