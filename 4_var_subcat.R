@@ -9,7 +9,9 @@ library(lubridate)
 # library(ggrepel) # para ggplot pero con ggplotly no sirve..
 
 # Objetos ya en la app
-expo_shiny <- readRDS("data/expo_shiny_post2010.RDS")
+
+expo_shiny <- readRDS("data/expo_shiny_post2010.RDS") %>% 
+        filter(!is.na(fob))
 
 desc_ncm <- readRDS("data/desc_ncm.RDS")
 

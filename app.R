@@ -58,9 +58,9 @@ to_spanish_dict <- spanish_months
 names(to_spanish_dict) <- english_months
 
 translate_date <- function(date, output_lang = "es"){
-    if(output_lang == "es"){
-        str_replace_all(tolower(date), to_spanish_dict)
-    }
+  if(output_lang == "es"){
+    str_replace_all(tolower(date), to_spanish_dict)
+  }
 }
 
 
@@ -70,16 +70,16 @@ translate_date <- function(date, output_lang = "es"){
 categ <- unique(expo_shiny$cat_omc_1)
 
 ano_1 <- expo_shiny %>%
-    filter(ano == max(ano)) %>%
-    left_join(desc_ncm) %>%
-    mutate(Mes = translate_date(month(mes, label = TRUE, abbr = TRUE)))
+  filter(ano == max(ano)) %>%
+  left_join(desc_ncm) %>%
+  mutate(Mes = translate_date(month(mes, label = TRUE, abbr = TRUE)))
 
 
 
 ano_0 <- expo_shiny %>%
-    filter(ano == max(ano) - 1 & mes <= max(ano_1$mes)) %>%
-    left_join(desc_ncm) %>%
-    mutate(Mes = translate_date(month(mes, label = TRUE)))
+  filter(ano == max(ano) - 1 & mes <= max(ano_1$mes)) %>%
+  left_join(desc_ncm) %>%
+  mutate(Mes = translate_date(month(mes, label = TRUE)))
 
 
 # Mapa ----
@@ -104,7 +104,7 @@ color_cat_1 <- c("#00B1AC", "#00ADE6","#E9644C", "#7F7F7F")
 
 # UI ----
 
-# Sidebar
+# Sidebar ----
 
 header <- dashboardHeaderPlus(
   # title = paste0("Mapa de las Exportaciones", 
@@ -152,7 +152,7 @@ sidebar <- dashboardSidebar(sidebarMenu(
                             disable = TRUE,
                             collapsed = TRUE)
 
-# Body
+# Body ----
     
 body <- dashboardBody(
     tags$head(tags$style(HTML('
@@ -307,7 +307,7 @@ ui <- dashboardPagePlus(
     body
 )
 
-# Server ----
+# SERVER ----
 
 server <- function(input, output) {
     
@@ -325,7 +325,7 @@ server <- function(input, output) {
     )
     
     
-    # Descripcion del periodo
+    # Descripcion del periodo ----
     output$desc_ano_1 <- renderUI({
         
         number_0 <- format(round((
@@ -386,7 +386,7 @@ server <- function(input, output) {
         )
     })
     
-    # Mapa
+    # Mapa ----
     output$mapa <- renderLeaflet({
         # Preparacion de dataset
         ano_0_fob <- subset_cat_0() %>%
@@ -518,7 +518,7 @@ server <- function(input, output) {
         
     })
     
-    # Evolucion mensual
+    # Evolucion mensual ----
     
     output$evol <- renderPlotly({
         if(input$toggle1 == TRUE) {
@@ -630,19 +630,20 @@ server <- function(input, output) {
             layout(legend = list(orientation = "h", x = 0.05, y = -0.14))
     })
     
-    # Grafico de pendientes
+    # Grafico de pendientes ----
     output$pendiente <- renderPlotly({
         
         if(input$toggle2 == FALSE){
             
             # Variacion FOB
-            subset_pendiente <- subset_cat() %>% 
-                filter(ano >= max(ano) - 1 & mes <= mesec) %>% 
-                group_by(ano, cat_omc_1, cat_omc_2) %>% 
-                summarise(y = sum(fob, na.rm = TRUE) / 1000000) %>% 
-                group_by(cat_omc_2) %>% 
-                mutate(var = (y / lag(y, n = 1) - 1) * 100) %>% 
-                as_tibble()  
+          subset_pendiente <- subset_cat() %>% 
+            filter(ano >= max(ano) - 1 & mes <= mesec) %>% 
+            group_by(ano, cat_omc_1, cat_omc_2) %>% 
+            summarise(y = sum(fob, na.rm = TRUE) / 1000000) %>% 
+            group_by(cat_omc_2) %>% 
+            mutate(var = (y / lag(y, n = 1) - 1) * 100) %>% 
+            as_tibble() 
+          
         }else{
             
             # Variacion cantidades
@@ -727,7 +728,7 @@ server <- function(input, output) {
         ggplotly(g_pendiente, tooltip = "text")
     })
     
-    # Ayuda, preguntas frecuentes y contacto
+    # Ayuda, preguntas frecuentes y contacto ----
     
     output$gif2 <- renderImage({
         return(list(src = "data/working.gif", contentType = "image/gif"))
