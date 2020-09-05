@@ -435,90 +435,101 @@ server <- function(input, output) {
     })
     
     # Mapa ----
+    
+    # Reactive
+    
+    ano_0_fob <- reactive({
+      subset_cat_0() %>%
+        group_by(iso3) %>%
+        summarise(fob_mm_tot_0 = sum(fob, na.rm = TRUE) / 1000000)
+    })
+    
+    top_p <- reactive({
+      subset_cat_1() %>%
+      group_by(iso3, desc_ncm) %>%
+      summarise(fob_mm = sum(fob, na.rm = TRUE) / 1000000) %>%
+      mutate(fob_mm_tot = sum(fob_mm, na.rm = TRUE),
+             part = fob_mm / fob_mm_tot * 100) %>%
+      arrange(iso3, desc(part)) %>%
+      top_n(n = 3, wt = part) %>%
+      mutate(top = paste0("top_", rank(desc(part)))) %>%
+      pivot_wider(names_from = top,
+                  values_from = c(desc_ncm, fob_mm, part)) %>%
+      left_join(ano_0_fob()) %>%
+      mutate(ano_0_var = (fob_mm_tot / fob_mm_tot_0 - 1) * 100)
+    })
+    
+    #Union con geometrias
+    mapa <- reactive({
+      left_join(mapa_crudo, top_p(), by = c("ISO3_CO" = "iso3"))
+    })
+    
+    # Paleta de colores
+    pal <- reactive({
+      colorNumeric(
+        palette = c("#79dcff", "#01548A"),
+        # mejorar la paleta
+        domain = mapa()$fob_mm_tot,
+        # podria cambiarlo para dejarlo fuera?
+        na.color = "#BFBFBF"
+      )
+    })
+    
+    # Popup
+    popup <- reactive({
+      if_else(
+      is.na(mapa()$fob_mm_tot),
+      paste0(
+        "<style='font-family:calibri;'>", "<b>",
+        mapa()$nmbr_tr,
+        "</b>",
+        "<br>",
+        "<style='font-family:calibri;'> Sin datos en el periodo"
+      ),
+      paste0(
+        "<style='font-family:calibri;'>", "<b>",
+        mapa()$nmbr_tr,
+        " | ",
+        "USD ",
+        format(
+          round(mapa()$fob_mm_tot, 1),
+          big.mark = ".",
+          decimal.mark = ","
+        ),
+        " mill.", "</b>",
+        "<br>",
+        "Var. interanual: ",
+        format(round(mapa()$ano_0_var, 1),
+               decimal.mark = ","),
+        "%",
+        "<br>",
+        "Principales productos al destino:",
+        "<br>",
+        format(round(mapa()$part_top_1, 1),
+               decimal.mark = ","),
+        "%",
+        " | ",
+        mapa()$desc_ncm_top_1,
+        "<br>",
+        format(round(mapa()$part_top_2, 1),
+               decimal.mark = ","),
+        "%",
+        " | ",
+        mapa()$desc_ncm_top_2,
+        "<br>",
+        format(round(mapa()$part_top_3, 1),
+               decimal.mark = ","),
+        "%",
+        " | ",
+        mapa()$desc_ncm_top_3, "</p>"
+      )
+    )
+    })
+    
     output$mapa <- renderLeaflet({
-        # Preparacion de dataset
-        ano_0_fob <- subset_cat_0() %>%
-            group_by(iso3) %>%
-            summarise(fob_mm_tot_0 = sum(fob, na.rm = TRUE) / 1000000)
-        
-        top_p <- subset_cat_1() %>%
-            group_by(iso3, desc_ncm) %>%
-            summarise(fob_mm = sum(fob, na.rm = TRUE) / 1000000) %>%
-            mutate(fob_mm_tot = sum(fob_mm, na.rm = TRUE),
-                   part = fob_mm / fob_mm_tot * 100) %>%
-            arrange(iso3, desc(part)) %>%
-            top_n(n = 3, wt = part) %>%
-            mutate(top = paste0("top_", rank(desc(part)))) %>%
-            pivot_wider(names_from = top,
-                        values_from = c(desc_ncm, fob_mm, part)) %>%
-            left_join(ano_0_fob) %>%
-            mutate(ano_0_var = (fob_mm_tot / fob_mm_tot_0 - 1) * 100)
-        
-        #Union con geometrias
-        mapa <-
-            left_join(mapa_crudo, top_p, by = c("ISO3_CO" = "iso3"))
-        
-        # Paleta de colores
-        pal <-
-            colorNumeric(
-                palette = c("#79dcff", "#01548A"),
-                # mejorar la paleta
-                domain = mapa$fob_mm_tot,
-                # podria cambiarlo para dejarlo fuera?
-                na.color = "#BFBFBF"
-            )
-        
-        # Popup
-        popup <- if_else(
-            is.na(mapa$fob_mm_tot),
-            paste0(
-                "<style='font-family:calibri;'>", "<b>",
-                mapa$nmbr_tr,
-                "</b>",
-                "<br>",
-                "<style='font-family:calibri;'> Sin datos en el periodo"
-            ),
-            paste0(
-                "<style='font-family:calibri;'>", "<b>",
-                mapa$nmbr_tr,
-                " | ",
-                "USD ",
-                format(
-                    round(mapa$fob_mm_tot, 1),
-                    big.mark = ".",
-                    decimal.mark = ","
-                ),
-                " mill.", "</b>",
-                "<br>",
-                "Var. interanual: ",
-                format(round(mapa$ano_0_var, 1),
-                       decimal.mark = ","),
-                "%",
-                "<br>",
-                "Principales productos al destino:",
-                "<br>",
-                format(round(mapa$part_top_1, 1),
-                       decimal.mark = ","),
-                "%",
-                " | ",
-                mapa$desc_ncm_top_1,
-                "<br>",
-                format(round(mapa$part_top_2, 1),
-                       decimal.mark = ","),
-                "%",
-                " | ",
-                mapa$desc_ncm_top_2,
-                "<br>",
-                format(round(mapa$part_top_3, 1),
-                       decimal.mark = ","),
-                "%",
-                " | ",
-                mapa$desc_ncm_top_3, "</p>"
-            )
-        )
         
         # Renderizacion del mapa
-        leaflet(data = mapa,
+        leaflet(data = mapa(),
                 options = leafletOptions(minZoom = 1.9, maxZoom = 6)) %>%
             setView(lng = 0,
                     lat = 0,
@@ -532,7 +543,7 @@ server <- function(input, output) {
             clearBounds() %>%
             # addProviderTiles(providers$CartoDB.DarkMatterNoLabels) %>%
             addPolygons(
-                fillColor = ~ pal(fob_mm_tot),
+                fillColor = ~ pal()(fob_mm_tot),
                 weight = 1,
                 opacity = 1,
                 color = "white",
@@ -545,13 +556,13 @@ server <- function(input, output) {
                     fillOpacity = 0.7,
                     bringToFront = TRUE
                 ),
-                label = mapa$nmbr_tr,
+                label = mapa()$nmbr_tr,
                 labelOptions = labelOptions(
                     style = list("font-family" = "Calibri", padding = "3px 8px"),
                     textsize = "15px",
                     direction = "auto"
                 ),
-                popup = popup,
+                popup = popup(),
                 popupOptions = popupOptions(
                     style = list("font-family" = "Calibri", padding = "3px 8px"),
                     # textsize = "20px",
@@ -568,38 +579,51 @@ server <- function(input, output) {
     
     # Evolucion mensual ----
     
+    # Reactive
+    evol <- reactive({
+      if(input$toggle1 == TRUE) {
+        evol <-  subset_cat() %>%
+          group_by(ano, mes) %>%
+          # En millones de toneladas
+          summarise(y = sum(pnet_kg, na.rm = TRUE) / 1000000000) %>%
+          as_tibble() %>%
+          mutate(Mes = factor(translate_date(month(mes, label = TRUE)),
+                              levels = spanish_months))
+      } else {
+        evol <-  subset_cat() %>%
+          group_by(ano, mes) %>%
+          summarise(y =  sum(fob, na.rm = TRUE) / 1000000) %>%
+          as_tibble() %>%
+          mutate(Mes = factor(translate_date(month(mes, label = TRUE)),
+                              levels = spanish_months))
+      }
+      
+    })
+    
+    evol_ant <- reactive({
+      evol() %>%
+      filter(ano < max(ano) - 1)
+    })
+    
+    evol_0 <- reactive({ 
+      evol() %>%
+      filter(ano == max(ano) - 1)
+    })
+    
+    evol_1 <- reactive({
+      evol() %>%
+      filter(ano == max(ano))
+    })
+    
+    evol_punto_1 <- reactive({
+      evol() %>%
+      filter(ano == max(ano)) %>%
+      filter(mes == max(mes))
+    })
+    
     output$evol <- renderPlotly({
-        if(input$toggle1 == TRUE) {
-            evol <-  subset_cat() %>%
-                group_by(ano, mes) %>%
-                # En millones de toneladas
-                summarise(y = sum(pnet_kg, na.rm = TRUE) / 1000000000) %>%
-                as_tibble() %>%
-                mutate(Mes = factor(translate_date(month(mes, label = TRUE)),
-                                    levels = spanish_months))
-        } else {
-            evol <-  subset_cat() %>%
-                group_by(ano, mes) %>%
-                summarise(y =  sum(fob, na.rm = TRUE) / 1000000) %>%
-                as_tibble() %>%
-                mutate(Mes = factor(translate_date(month(mes, label = TRUE)),
-                                    levels = spanish_months))
-        }
         
-        evol_ant <- evol %>%
-            filter(ano < max(ano) - 1)
-        
-        evol_0 <- evol %>%
-            filter(ano == max(ano) - 1)
-        
-        evol_1 <- evol %>%
-            filter(ano == max(ano))
-        
-        evol_punto_1 <- evol %>%
-            filter(ano == max(ano)) %>%
-            filter(mes == max(mes))
-        
-        ev <- evol_ant %>%
+        ev <- evol_ant() %>%
             ggplot(aes(Mes, y)) +
             geom_line(aes(group = ano, 
                           text = paste0(Mes, " ", ano,
@@ -608,7 +632,7 @@ server <- function(input, output) {
                                                        decimal.mark = ",")
                                         ),
                           color = paste0("2010-", max(ano)))) +
-            geom_line(data = evol_0,
+            geom_line(data = evol_0(),
                       aes(group = ano,
                           text = paste0(Mes, " ", ano,
                                         "<br>", format(y, digits = 2, 
@@ -616,7 +640,7 @@ server <- function(input, output) {
                                                        decimal.mark = ",")
                           ),
                           color = paste0(max(ano)))) +
-            geom_line(data = evol_1,
+            geom_line(data = evol_1(),
                       aes(group = ano, 
                           text = paste0(Mes, " ", ano,
                                         "<br>", format(y, digits = 2, 
@@ -626,7 +650,7 @@ server <- function(input, output) {
                           color = paste0(max(ano))),
                       size = 1.2,
             ) +
-            geom_point(data = evol_punto_1,
+            geom_point(data = evol_punto_1(),
                        aes(Mes,
                            y,
                            text = paste0(Mes, " ", ano,
@@ -635,7 +659,7 @@ server <- function(input, output) {
                                                         decimal.mark = ",")
                            ),
                            color = paste0(max(
-                               month(evol_1$mes,
+                               month(evol_1()$mes,
                                      label = TRUE,
                                      abbr = FALSE)))
                            ),
@@ -657,11 +681,11 @@ server <- function(input, output) {
                 "",
                 # Podria sacarlo del server
                 breaks = c(
-                    paste0("2010-", max(evol_ant$ano)),
-                    paste0(max(evol_0$ano)),
-                    paste0(max(evol_1$ano)),
+                    paste0("2010-", max(evol_ant()$ano)),
+                    paste0(max(evol_0()$ano)),
+                    paste0(max(evol_1()$ano)),
                     paste0(max(
-                        month(evol_1$mes,
+                        month(evol_1()$mes,
                               label = TRUE,
                               abbr = FALSE)
                     ))
