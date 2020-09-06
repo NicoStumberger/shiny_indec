@@ -168,13 +168,13 @@ body <- dashboardBody(
             INDEC y a la categorización por sectores y subsectores de la OMC."
           ),
         ),
-        # Primer fila
+        # Primer fila ----
         fluidRow(
             boxPlus(
-                title = "Categorias",
+                # title = "Categorias",
                 prettyCheckboxGroup(
                     inputId = "categoria",
-                    label = "Selecciona una o varias",
+                    label = "Selecciona una o varias Categorías",
                     thick = TRUE,
                     # choices = levels(expo_shiny$cat_omc_1),
                     selected = levels(expo_shiny$cat_omc_1),
@@ -212,7 +212,7 @@ body <- dashboardBody(
                            uiOutput("desc_ano_1_ton")))
             ),
         ),
-        # Segunda fila MAPA
+        # Segunda fila MAPA ----
         fluidRow(
             box(title = "¿Cuáles son los principales destinos?",
                 p("Click en cada país para ver valores, variación y principales
@@ -221,7 +221,7 @@ body <- dashboardBody(
                 leafletOutput("mapa")
             )
         ),
-        # Tercer fila 
+        # Tercer fila ----
         fluidRow(
             box(
                 title = "¿Cómo evolucionan las exportaciones comparando con años anteriores?",
@@ -259,9 +259,9 @@ body <- dashboardBody(
         
         tags$hr(),
         
-        # Cuarta fila 
+        # Cuarta fila ----
         fluidRow(
-          box(
+          boxPlus(
               selectizeInput(
                 inputId = "subcat", 
                 label = "Selecciona una o varias subcategorías",
@@ -269,7 +269,22 @@ body <- dashboardBody(
                 multiple = TRUE,
                 options = list(placeholder = "Selecciona una o varias subcategorías")
             ),
+            actionBttn(inputId = "ver_subcat", 
+                       label = "Actualizar",
+                       style = "jelly", 
+                       color = "success", 
+                       size = "sm", 
+                       block = TRUE,
+                       icon = icon("redo")),
             width = 4,
+            tags$hr(),
+            p("Totales en valores y cantidades para las subcategorías seleccionadas."),
+            footer = fluidRow(# descripcion general del periodo
+              column(width = 6,
+                     uiOutput("desc_ano_1_subcat")),
+              column(width = 6,
+                     uiOutput("desc_ano_1_ton_subcat")))
+            
           ),
           box(
             title = "¿Cómo evolucionan las exportaciones mensuales de 
@@ -277,10 +292,10 @@ body <- dashboardBody(
             tags$h6(em("Pasa el mouse por encima del gráfico para ver detalles.
                   También podés ver la evolución en cantidades haciendo click al pie del gráfico.")),
             solidHeader = TRUE,
-            plotlyOutput(outputId = "evol_subcat"),
+            plotlyOutput(outputId = "evol_sub_cat"),
             width = 8,
             prettyToggle(
-              inputId = "toggle2",
+              inputId = "toggle3",
               label_on = "Mostrar valores FOB",
               label_off = "Mostrar cantidades",
               icon_on = icon("angle-left"),
@@ -290,7 +305,7 @@ body <- dashboardBody(
           )
         ),
         
-        # Quinta fila 
+        # Quinta fila ----
         fluidRow(
           box(
             title = "¿Cuáles son los principales destinos de las 
@@ -301,7 +316,7 @@ body <- dashboardBody(
             plotlyOutput(outputId = "destinos"),
             width = 6,
             prettyToggle(
-              inputId = "toggle1",
+              inputId = "toggle4",
               label_on = "Mostrar valores FOB",
               label_off = "Mostrar cantidades",
               icon_on = icon("angle-left"),
@@ -318,7 +333,7 @@ body <- dashboardBody(
             plotlyOutput(outputId = "productos"),
             width = 6,
             prettyToggle(
-              inputId = "toggle2",
+              inputId = "toggle5",
               label_on = "Mostrar valores FOB",
               label_off = "Mostrar cantidades",
               icon_on = icon("angle-left"),
@@ -427,10 +442,6 @@ server <- function(input, output) {
                                   "caret-down"),
             header = paste0(header_0),
             text = "millones de TONELADAS",
-            # text = paste0("ENE", "-", 
-            #               dic_meses$Mes[dic_meses$mes == max(ano_1$mes)], " ",
-            #               max(ano_1$ano)
-            # )
         )
     })
     
@@ -820,6 +831,205 @@ server <- function(input, output) {
       
       ggplotly(dotplot, tooltip = "text")
       
+    })
+    
+    # Reactive subcat ----
+    
+    subset_subcat_1 <- eventReactive(input$ver_subcat, {
+      ano_1 %>% filter(cat_omc_2 %in% input$subcat)
+    }, ignoreNULL = FALSE
+    )
+    
+    subset_subcat_0 <- eventReactive(input$ver_subcat, {
+      ano_0 %>% filter(cat_omc_2 %in% input$subcat)
+    }, ignoreNULL = FALSE
+    )
+    
+    subset_sub_cat <- eventReactive(input$ver_subcat, {
+      expo_shiny %>% filter(cat_omc_2 %in% input$subcat)  
+    }, ignoreNULL = FALSE
+    )
+    
+    # Descripcion subcategoria ----
+    
+    output$desc_ano_1_subcat <- renderUI({
+      
+      number_0 <- format(round((
+        sum(subset_subcat_1()$fob, na.rm = TRUE) / sum(subset_subcat_0()$fob, na.rm = TRUE) - 1
+      ) * 100,
+      digits = 1),
+      big.mark = ".",
+      decimal.mark = ",")
+      
+      header_0 <- format(round(sum(subset_subcat_1()$fob, na.rm = TRUE) / 1000000, digits = 0),
+                         big.mark = ".",
+                         decimal.mark = ",")
+      
+      descriptionBlock(
+        number = paste0(number_0," %"),
+        numberColor = if_else(number_0 >= 0, "green", "red"),
+        numberIcon = if_else(number_0 >= 0,
+                             "caret-up",
+                             "caret-down"),
+        header = paste(header_0),
+        text = "millones de USD",
+        rightBorder = TRUE
+      )
+    })
+    
+    output$desc_ano_1_ton_subcat <- renderUI({
+      
+      number_0 <- format(round((
+        sum(subset_subcat_1()$pnet_kg, na.rm = TRUE) / sum(subset_subcat_0()$pnet_kg, na.rm = TRUE) - 1
+      ) * 100,
+      digits = 1),
+      big.mark = ".",
+      decimal.mark = ",")
+      
+      header_0 <-
+        format(
+          round(sum(subset_subcat_1()$pnet_kg, na.rm = TRUE) / 1000000000,
+                digits = 1),
+          big.mark = ".",
+          decimal.mark = ","
+        )
+      
+      descriptionBlock(
+        number = paste0(number_0," %"),
+        numberColor = if_else(number_0 >= 0, "green", "red"),
+        numberIcon = if_else(number_0 >= 0, 
+                             "caret-up", 
+                             "caret-down"),
+        header = paste0(header_0),
+        text = "millones de TONELADAS",
+      )
+    })
+    
+    # Evolucion subcategorias ----
+    
+    evol_subcat <- reactive({
+
+      if(input$toggle3 == TRUE) {
+        evol <-  subset_sub_cat() %>%
+          group_by(ano, mes) %>%
+          # En millones de toneladas
+          summarise(y = sum(pnet_kg, na.rm = TRUE) / 1000000000) %>%
+          as_tibble() %>%
+          mutate(Mes = factor(translate_date(month(mes, label = TRUE)),
+                              levels = spanish_months))
+      } else {
+        evol <-  subset_sub_cat() %>%
+          group_by(ano, mes) %>%
+          summarise(y =  sum(fob, na.rm = TRUE) / 1000000) %>%
+          as_tibble() %>%
+          mutate(Mes = factor(translate_date(month(mes, label = TRUE)),
+                              levels = spanish_months))
+      }
+      
+    })
+    
+    evol_ant_subcat <- reactive({
+      evol_subcat() %>%
+        filter(ano < max(ano) - 1)
+    })
+    
+    evol_0_subcat <- reactive({ 
+      evol_subcat() %>%
+        filter(ano == max(ano) - 1)
+    })
+    
+    evol_1_subcat <- reactive({
+      evol_subcat() %>%
+        filter(ano == max(ano))
+    })
+    
+    evol_punto_1_subcat <- reactive({
+      evol_subcat() %>%
+        filter(ano == max(ano)) %>%
+        filter(mes == max(mes))
+    })
+    
+    output$evol_sub_cat <- renderPlotly({
+      
+      
+      
+      ev <- evol_ant_subcat() %>%
+        ggplot(aes(Mes, y)) +
+        geom_line(aes(group = ano, 
+                      text = paste0(Mes, " ", ano,
+                                    "<br>", format(y, digits = 2, 
+                                                   big.mark = ".",
+                                                   decimal.mark = ",")
+                      ),
+                      color = paste0("2010-", max(ano)))) +
+        geom_line(data = evol_0_subcat(),
+                  aes(group = ano,
+                      text = paste0(Mes, " ", ano,
+                                    "<br>", format(y, digits = 2, 
+                                                   big.mark = ".",
+                                                   decimal.mark = ",")
+                      ),
+                      color = paste0(max(ano)))) +
+        geom_line(data = evol_1_subcat(),
+                  aes(group = ano, 
+                      text = paste0(Mes, " ", ano,
+                                    "<br>", format(y, digits = 2, 
+                                                   big.mark = ".",
+                                                   decimal.mark = ",")
+                      ),
+                      color = paste0(max(ano))),
+                  size = 1.2,
+        ) +
+        geom_point(data = evol_punto_1_subcat(),
+                   aes(Mes,
+                       y,
+                       text = paste0(Mes, " ", ano,
+                                     "<br>", format(y, digits = 2, 
+                                                    big.mark = ".",
+                                                    decimal.mark = ",")
+                       ),
+                       color = paste0(max(
+                         month(evol_1()$mes,
+                               label = TRUE,
+                               abbr = FALSE)))
+                   ),
+                   size = 3) +
+        theme_minimal() +
+        theme(text = element_text(family = "Calibri"),
+              panel.grid.major = element_blank(), 
+              legend.position = "bottom") +
+        labs(# podria sacar el texto del server
+          x = "",
+          y =  if_else(input$toggle3 == FALSE, 
+                       "En millones de USD",
+                       "En millones de toneladas"),
+          color = "Años") +
+        # podría sacarlo del server
+        scale_y_continuous(labels = scales::comma_format(big.mark = ".",
+                                                         decimal.mark = ",")) +
+        scale_color_manual(
+          "",
+          # Podria sacarlo del server
+          breaks = c(
+            paste0("2010-", max(evol_ant_subcat()$ano)),
+            paste0(max(evol_0_subcat()$ano)),
+            paste0(max(evol_1_subcat()$ano)),
+            paste0(max(
+              month(evol_1_subcat()$mes,
+                    label = TRUE,
+                    abbr = FALSE)
+            ))
+          ),
+          # podría sacarlo del server
+          values = c("#F2F2F2",
+                     "#00ADE6",
+                     "#3175AC",
+                     "#3175AC")
+        )
+      
+      # Render grafico
+      ggplotly(ev, tooltip = "text") %>% 
+        layout(legend = list(orientation = "h", x = 0.05, y = -0.14))
     })
     
     
