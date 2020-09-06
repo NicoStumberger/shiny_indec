@@ -18,8 +18,14 @@ library(shinyWidgets)
 Sys.setlocale("LC_TIME", "English")
 
 # Carga de Datasets ----
-expo_shiny <- readRDS("data/expo_shiny_post2010.RDS") %>% 
-  filter(!is.na(fob))
+expo_shiny <- readRDS("data/expo_shiny_post2010.RDS") %>%
+  filter(!is.na(fob)) %>%
+  mutate(
+    nom_indec = case_when(
+      iso3 == "HKG" ~ "Hong Kong (China)",
+      TRUE ~ nom_indec
+    )
+  )
 
 skimr::skim(expo_shiny)
 desc_ncm <- readRDS("data/desc_ncm.RDS")
@@ -70,6 +76,11 @@ translate_date <- function(date, output_lang = "es"){
 categ <- unique(expo_shiny$cat_omc_1)
 
 subcat <- unique(expo_shiny$cat_omc_2)
+
+cat_subcat_ncm <- expo_shiny %>% 
+  select(cat_omc_1, cat_omc_2, ncm) %>% 
+  distinct() %>% 
+  left_join(desc_ncm)
 
 ano_1 <- expo_shiny %>%
   filter(ano == max(ano)) %>%
@@ -224,7 +235,8 @@ body <- dashboardBody(
         # Tercer fila ----
         fluidRow(
             box(
-                title = "¿Cómo evolucionan las exportaciones comparando con años anteriores?",
+                title = "¿Cómo evolucionan las exportaciones mensuales de la categoría
+                seleccionada comparando con años anteriores?",
                 tags$h6(em("Pasa el mouse por encima del gráfico para ver detalles,
                   clickea las leyendas para quitar información del gráfico.
                   También podés ver la evolución en cantidades haciendo click al pie del gráfico.")),
@@ -288,7 +300,7 @@ body <- dashboardBody(
           ),
           box(
             title = "¿Cómo evolucionan las exportaciones mensuales de 
-            las subcategorías seleccionadas?",
+            las subcategorías seleccionadas, comparando con años anteriores?",
             tags$h6(em("Pasa el mouse por encima del gráfico para ver detalles.
                   También podés ver la evolución en cantidades haciendo click al pie del gráfico.")),
             solidHeader = TRUE,
@@ -309,7 +321,7 @@ body <- dashboardBody(
         fluidRow(
           box(
             title = "¿Cuáles son los principales destinos de las 
-            subcategorías seleccionadas?",
+            subcategorías seleccionadas y cuánto variaron?",
             tags$h6(em("Pasa el mouse por encima del gráfico para ver detalles,
                   También podés ver en cantidades haciendo click al pie del gráfico.")),
             solidHeader = TRUE,
@@ -326,7 +338,7 @@ body <- dashboardBody(
           ),
           box(
             title = "¿Cuáles son los principales productos de las 
-            subcategorías seleccionadas?",
+            subcategorías seleccionadas y cuánto variaron?",
             tags$h6(em("Pasa el mouse por encima del gráfico para ver detalles.
                   También podés ver en cantidades haciendo click al pie del gráfico.")),
             solidHeader = TRUE,
@@ -713,7 +725,7 @@ server <- function(input, output) {
             layout(legend = list(orientation = "h", x = 0.05, y = -0.14))
     })
     
-    # Grafico de pendientes ----
+    # Dotplot subcat ----
     
     subset_dotplot <- reactive({
       
@@ -763,7 +775,7 @@ server <- function(input, output) {
           color = cat_omc_1,
           text = paste0(
             "<b>",
-            cat_omc_1,
+            cat_omc_1, " ", max(evol_1()$ano),
             "</b>",
             "<br>",
             cat_omc_2,
@@ -791,7 +803,7 @@ server <- function(input, output) {
             color = cat_omc_1,
             text = paste0(
               "<b>",
-              cat_omc_1,
+              cat_omc_1, " ", max(evol_0()$ano),
               "</b>",
               "<br>",
               cat_omc_2,
@@ -837,17 +849,18 @@ server <- function(input, output) {
     
     subset_subcat_1 <- eventReactive(input$ver_subcat, {
       ano_1 %>% filter(cat_omc_2 %in% input$subcat)
-    }, ignoreNULL = FALSE
+    }, ignoreNULL = TRUE
     )
     
     subset_subcat_0 <- eventReactive(input$ver_subcat, {
       ano_0 %>% filter(cat_omc_2 %in% input$subcat)
-    }, ignoreNULL = FALSE
+    }, ignoreNULL = TRUE
     )
     
-    subset_sub_cat <- eventReactive(input$ver_subcat, {
+    subset_sub_cat <- eventReactive(
+            input$ver_subcat, {
       expo_shiny %>% filter(cat_omc_2 %in% input$subcat)  
-    }, ignoreNULL = FALSE
+    }, ignoreNULL = TRUE
     )
     
     # Descripcion subcategoria ----
@@ -1032,6 +1045,253 @@ server <- function(input, output) {
         layout(legend = list(orientation = "h", x = 0.05, y = -0.14))
     })
     
+    # Dotplot destinos ----
+    
+    dotplot_destinos <- reactive({
+      
+      if(input$toggle4 == FALSE){
+        
+        # Variacion FOB
+        dotplot_destinos <- subset_sub_cat() %>% 
+          filter(ano >= max(ano) - 1 & mes <= mesec) %>% 
+          group_by(ano, nom_indec) %>% 
+          summarise(y = sum(fob, na.rm = TRUE) / 1000000) %>% 
+          pivot_wider(names_from = ano, values_from = y) %>% 
+          rename(ano_0 = 2,
+                 ano_1 = 3) %>% 
+          mutate(var = (ano_1 / ano_0  - 1) * 100) %>% 
+          filter(nom_indec != "Confidencial",
+                 !is.na(ano_1)) %>% 
+          slice_max(order_by = ano_1, n = 10, with_ties = FALSE)
+        
+      }else{
+        
+        # Variacion cantidades
+        dotplot_destinos <- subset_sub_cat() %>% 
+          filter(ano >= max(ano) - 1 & mes <= mesec) %>% 
+          group_by(ano, nom_indec) %>% 
+          # En millones de toneladas
+          summarise(y = round(sum(pnet_kg, na.rm = TRUE) / 1000000000, digits = 2)) %>% 
+          pivot_wider(names_from = ano, values_from = y) %>% 
+          rename(ano_0 = 2,
+                 ano_1 = 3) %>% 
+          mutate(var = (ano_1 / ano_0  - 1) * 100) %>% 
+          filter(nom_indec != "Confidencial",
+                 !is.na(ano_1)) %>% 
+          slice_max(order_by = ano_1, n = 10, with_ties = FALSE)
+        
+      }
+    })
+    
+    
+    output$destinos <- renderPlotly({
+      
+      destinos <- dotplot_destinos() %>%
+        ggplot(aes(ano_1, reorder(nom_indec, ano_1))) +
+        geom_segment(aes(
+          x = ano_1,
+          y = reorder(nom_indec, ano_1),
+          xend = ano_0,
+          yend = reorder(nom_indec, ano_1)
+        ),
+        color = "#00ADE6") +
+        geom_point(aes(
+          text = paste0(
+            "<b>",
+            nom_indec, " ", max(evol_1()$ano),
+            "</b>",
+            "<br>",
+            format(
+              ano_1,
+              digits = 2,
+              big.mark = ".",
+              decimal.mark = ","
+            ),
+            "<br>",
+            format(
+              var,
+              digits = 2,
+              big.mark = ".",
+              decimal.mark = ","
+            ), " %"
+          )
+        ),
+        color = "#00ADE6",
+        size = 2) +
+        geom_point(
+          aes(
+            ano_0,
+            reorder(nom_indec, ano_1),
+            # color = cat_omc_1,
+            text = paste0(
+              "<b>",
+              nom_indec, " ", max(evol_0()$ano),
+              "</b>",
+              "<br>",
+              format(
+                ano_0,
+                digits = 2,
+                big.mark = ".",
+                decimal.mark = ","
+              )
+            )
+          ),
+          color = "#00ADE6",
+          alpha = 0.3,
+          size = 2
+        ) +
+        # scale_color_manual(breaks = unique(expo_shiny$cat_omc_1),
+        #                    values = color_cat_1) +
+        theme_minimal() +
+        scale_x_log10(labels = scales::comma_format(big.mark = ".",
+                                                    decimal.mark = ",")) +
+        theme(
+          text = element_text(family = "Calibri"),
+          plot.margin = unit(c(1, 1, 1, -1), "cm"),
+          legend.position = "none",
+          legend.title = element_blank(),
+          panel.grid.minor = element_blank()
+        ) +
+        labs(
+          y = "",
+          x = if_else(
+            input$toggle4 == FALSE,
+            "En millones de USD",
+            "En millones de toneladas"
+          )
+        )
+      
+      
+      ggplotly(destinos, tooltip = "text")
+      
+    })
+    
+    # Dotplot productos ----
+    
+    dotplot_productos <- reactive({
+      
+      if(input$toggle5 == FALSE){
+        
+        # Variacion FOB
+        dotplot_productos <- subset_sub_cat() %>% 
+          filter(ano >= max(ano) - 1 & mes <= mesec) %>% 
+          group_by(ano, ncm) %>% 
+          summarise(y = sum(fob, na.rm = TRUE) / 1000000) %>% 
+          pivot_wider(names_from = ano, values_from = y) %>% 
+          rename(ano_0 = 2,
+                 ano_1 = 3) %>% 
+          mutate(var = (ano_1 / ano_0  - 1) * 100) %>% 
+          filter(ncm != "99999999",
+                 !is.na(ano_1)) %>% 
+          slice_max(order_by = ano_1, n = 10, with_ties = FALSE)
+        
+      }else{
+        
+        # Variacion cantidades
+        dotplot_productos <- subset_sub_cat() %>% 
+          filter(ano >= max(ano) - 1 & mes <= mesec) %>% 
+          group_by(ano, ncm) %>% 
+          # En millones de toneladas
+          summarise(y = round(sum(pnet_kg, na.rm = TRUE) / 1000000000, digits = 2)) %>% 
+          pivot_wider(names_from = ano, values_from = y) %>% 
+          rename(ano_0 = 2,
+                 ano_1 = 3) %>% 
+          mutate(var = (ano_1 / ano_0  - 1) * 100) %>% 
+          filter(ncm != "99999999",
+                 !is.na(ano_1)) %>% 
+          slice_max(order_by = ano_1, n = 10, with_ties = FALSE)
+        
+      }
+      
+      dotplot_productos <- dotplot_productos %>% 
+        left_join(cat_subcat_ncm) # cat_omc_1, cat_omc_2, descripcion ncm
+      
+    })
+    
+    
+    output$productos <- renderPlotly({
+      
+      productos <- dotplot_productos() %>%
+        ggplot(aes(ano_1, reorder(desc_ncm, ano_1))) +
+        geom_segment(aes(
+          x = ano_1,
+          y = reorder(desc_ncm, ano_1),
+          xend = ano_0,
+          yend = reorder(desc_ncm, ano_1),
+          color = cat_omc_1
+        )) +
+        geom_point(aes(
+          color = cat_omc_1,
+          text = paste0(
+            "<b>",
+            cat_omc_2, " ", max(evol_1()$ano),
+            "</b>",
+            "<br>",
+            desc_ncm,
+            "<br>",
+            format(
+              ano_1,
+              digits = 2,
+              big.mark = ".",
+              decimal.mark = ","
+            ),
+            "<br>",
+            format(
+              var,
+              digits = 2,
+              big.mark = ".",
+              decimal.mark = ","
+            ), " %"
+          )
+        ),
+        size = 2) +
+        geom_point(
+          aes(
+            ano_0,
+            reorder(desc_ncm, ano_1),
+            color = cat_omc_1,
+            text = paste0(
+              "<b>",
+              cat_omc_2, " ", max(evol_0()$ano),
+              "</b>",
+              "<br>",
+              desc_ncm,
+              "<br>",
+              format(
+                ano_0,
+                digits = 2,
+                big.mark = ".",
+                decimal.mark = ","
+              )
+            )
+          ),
+          alpha = 0.3,
+          size = 2
+        ) +
+        scale_color_manual(breaks = unique(expo_shiny$cat_omc_1),
+                           values = color_cat_1) +
+        theme_minimal() +
+        scale_x_log10(labels = scales::comma_format(big.mark = ".",
+                                                    decimal.mark = ",")) +
+        theme(
+          text = element_text(family = "Calibri"),
+          plot.margin = unit(c(1, 1, 1, -1), "cm"),
+          legend.position = "none",
+          legend.title = element_blank(),
+          panel.grid.minor = element_blank()
+        ) +
+        labs(
+          y = "",
+          x = if_else(
+            input$toggle5 == FALSE,
+            "En millones de USD",
+            "En millones de toneladas"
+          )
+        )
+      
+      ggplotly(productos, tooltip = "text")
+      
+    })
     
     # output$pendiente <- renderPlotly({
     #     

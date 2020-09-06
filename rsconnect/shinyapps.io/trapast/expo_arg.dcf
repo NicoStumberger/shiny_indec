@@ -5,9 +5,9 @@ account: trapast
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2422642
-bundleId: 3543058
+bundleId: 3600274
 url: https://trapast.shinyapps.io/expo_arg/
-when: 1598040330.1881
+when: 1599434099.67056
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: 1_script_expo_shiny.R|2_mapa.R|3_evolucion.R|4_var_subcat.R|app2.R|descripcion.nb.html|descripcion.Rmd|notas.nb.html|notas.Rmd|README.md|output/expo_shiny.RDS|output/expo_shiny_post2010.RDS
+ignoredFiles: 1_script_expo_shiny.R|2_mapa.R|3_evolucion.R|4_var_subcat.R|5_var_subcat_dotplot.R|6_dotplot_destinos.R|app2.R|descripcion.nb.html|descripcion.Rmd|notas.nb.html|notas.Rmd|README.md|output/expo_shiny.RDS|output/expo_shiny_post2010.RDS
