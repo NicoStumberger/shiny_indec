@@ -375,13 +375,13 @@ body <- dashboardBody(
               widgetUserBox(
                 title = tags$h4("¿Cual es la fuente de la información?"),
                 boxToolSize = "md",
-                # subtitle = "lead Developer",
                 collapsible = TRUE,
                 collapsed = TRUE,
                 width = 12,
                 type = 2,
                 color = "primary",
-                "Some text here!",
+                "La fuente de información es AAICI en base a datos de INDEC y 
+                a la categorización por sectores y subsectores de la OMC.",
                 # footer = "The footer here!"
               )
             ))
