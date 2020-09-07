@@ -131,7 +131,7 @@ sidebar <- dashboardSidebar(sidebarMenu(
                                 ),
                                 menuItem(
                                     "Ayuda",
-                                    tabName = "destino",
+                                    tabName = "ayuda",
                                     icon = icon("info")
                                 )
                             ),
@@ -229,7 +229,9 @@ body <- dashboardBody(
                 p("Click en cada país para ver valores, variación y principales
                   productos exportados en el periodo"),
                 width = 12,
-                leafletOutput("mapa")
+                leafletOutput("mapa") %>% 
+                  shinycssloaders::withSpinner(type = 2, color = "#00ADE6", 
+                                               color.background = "white")
             )
         ),
         # Tercer fila ----
@@ -241,7 +243,9 @@ body <- dashboardBody(
                   clickea las leyendas para quitar información del gráfico.
                   También podés ver la evolución en cantidades haciendo click al pie del gráfico.")),
                 solidHeader = TRUE,
-                plotlyOutput(outputId = "evol"),
+                plotlyOutput(outputId = "evol") %>% 
+                  shinycssloaders::withSpinner(type = 2, color = "#00ADE6", 
+                                               color.background = "white"),
                 width = 6,
                 prettyToggle(
                     inputId = "toggle1",
@@ -257,7 +261,9 @@ body <- dashboardBody(
                 tags$h6(em("Pasa el mouse por encima del gráfico para ver detalles.
                   También podés ver la evolución en cantidades haciendo click al pie del gráfico.")),
                 solidHeader = TRUE,
-                plotlyOutput(outputId = "pendiente"),
+                plotlyOutput(outputId = "pendiente") %>% 
+                  shinycssloaders::withSpinner(type = 2, color = "#00ADE6", 
+                                               color.background = "white"),
                 prettyToggle(
                     inputId = "toggle2",
                     label_on = "Mostrar valores FOB",
@@ -304,7 +310,9 @@ body <- dashboardBody(
             tags$h6(em("Pasa el mouse por encima del gráfico para ver detalles.
                   También podés ver la evolución en cantidades haciendo click al pie del gráfico.")),
             solidHeader = TRUE,
-            plotlyOutput(outputId = "evol_sub_cat"),
+            plotlyOutput(outputId = "evol_sub_cat") %>% 
+              shinycssloaders::withSpinner(type = 2, color = "#00ADE6", 
+                                           color.background = "white"),
             width = 8,
             prettyToggle(
               inputId = "toggle3",
@@ -325,7 +333,9 @@ body <- dashboardBody(
             tags$h6(em("Pasa el mouse por encima del gráfico para ver detalles,
                   También podés ver en cantidades haciendo click al pie del gráfico.")),
             solidHeader = TRUE,
-            plotlyOutput(outputId = "destinos"),
+            plotlyOutput(outputId = "destinos") %>% 
+              shinycssloaders::withSpinner(type = 2, color = "#00ADE6", 
+                                           color.background = "white"),
             width = 6,
             prettyToggle(
               inputId = "toggle4",
@@ -342,7 +352,9 @@ body <- dashboardBody(
             tags$h6(em("Pasa el mouse por encima del gráfico para ver detalles.
                   También podés ver en cantidades haciendo click al pie del gráfico.")),
             solidHeader = TRUE,
-            plotlyOutput(outputId = "productos"),
+            plotlyOutput(outputId = "productos") %>% 
+              shinycssloaders::withSpinner(type = 2, color = "#00ADE6", 
+                                           color.background = "white"),
             width = 6,
             prettyToggle(
               inputId = "toggle5",
@@ -356,22 +368,23 @@ body <- dashboardBody(
         )
     ),
     
-    ## Contenido del sgdo tab
-    tabItem(
-        tabName = "destino",
-        h2("Preguntas frecuentes"),
-        fluidRow(
-            box(width = 4,
-                br(),
-                imageOutput("gif1", height = "auto")),
-            box(width = 4,
-                br(),
-                imageOutput("gif2", height = "auto")),
-            box(width = 4,
-                br(),
-                imageOutput("gif3", height = "auto"))
-        )
-    )
+    ## Info Ayuda FAQ ----
+    tabItem(tabName = "ayuda",
+            h2("Preguntas frecuentes"),
+            fluidRow(
+              widgetUserBox(
+                title = tags$h4("¿Cual es la fuente de la información?"),
+                boxToolSize = "md",
+                # subtitle = "lead Developer",
+                collapsible = TRUE,
+                collapsed = TRUE,
+                width = 12,
+                type = 2,
+                color = "primary",
+                "Some text here!",
+                # footer = "The footer here!"
+              )
+            ))
 ))
 
 
@@ -1392,9 +1405,12 @@ server <- function(input, output) {
     
     # Ayuda, preguntas frecuentes y contacto ----
     
-    output$gif2 <- renderImage({
-        return(list(src = "data/working.gif", contentType = "image/gif"))
-    }, deleteFile = FALSE)
+    
+    
+    
+    # output$gif2 <- renderImage({
+    #     return(list(src = "data/working.gif", contentType = "image/gif"))
+    # }, deleteFile = FALSE)
     
 }
 
