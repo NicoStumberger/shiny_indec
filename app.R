@@ -30,6 +30,10 @@ expo_shiny <- readRDS("data/expo_shiny_post2010.RDS") %>%
 skimr::skim(expo_shiny)
 desc_ncm <- readRDS("data/desc_ncm.RDS")
 
+# Preguntas frecuentes
+faq <- read_excel("data/faq.xlsx") %>% 
+  mutate(pregunta = str_c(id, ".", " ", pregunta))
+
 # Formula para que los meses en ingles, aparezcan en espanol en el server
 english_months <- c("jan", "feb", "mar", "apr", 
                     "may", "jun", "jul", "aug", 
@@ -179,6 +183,9 @@ body <- dashboardBody(
             INDEC y a la categorización por sectores y subsectores de la OMC."
           ),
         ),
+        
+        h3("Análisis por categoría"),
+        tags$hr(style="border-color: #00ADE6;"),
         # Primer fila ----
         fluidRow(
             boxPlus(
@@ -275,8 +282,9 @@ body <- dashboardBody(
             )
         ),
         
-        tags$hr(),
         
+        h3("Análisis por subcategoría"),
+        tags$hr(style="border-color: #00ADE6;"),
         # Cuarta fila ----
         fluidRow(
           boxPlus(
@@ -365,7 +373,8 @@ body <- dashboardBody(
               animation = "pulse"
             )
           )
-        )
+        ),
+        tags$hr(style="border-color: #00ADE6;")
     ),
     
     ## Info Ayuda FAQ ----
@@ -373,16 +382,154 @@ body <- dashboardBody(
             h2("Preguntas frecuentes"),
             fluidRow(
               widgetUserBox(
-                title = tags$h4("¿Cual es la fuente de la información?"),
+                title = tags$h4(faq$pregunta[faq$id==1]),
                 boxToolSize = "md",
                 collapsible = TRUE,
                 collapsed = TRUE,
                 width = 12,
                 type = 2,
                 color = "primary",
-                "La fuente de información es AAICI en base a datos de INDEC y 
-                a la categorización por sectores y subsectores de la OMC.",
-                # footer = "The footer here!"
+                faq$respuesta[faq$id==1]
+              ),
+              widgetUserBox(
+                title = tags$h4(faq$pregunta[faq$id==2]),
+                boxToolSize = "md",
+                collapsible = TRUE,
+                collapsed = TRUE,
+                width = 12,
+                type = 2,
+                color = "primary",
+                faq$respuesta[faq$id==2]
+              ),
+              widgetUserBox(
+                title = tags$h4(faq$pregunta[faq$id==3]),
+                boxToolSize = "md",
+                collapsible = TRUE,
+                collapsed = TRUE,
+                width = 12,
+                type = 2,
+                color = "primary",
+                faq$respuesta[faq$id==3]
+              ),
+              widgetUserBox(
+                title = tags$h4(faq$pregunta[faq$id==4]),
+                boxToolSize = "md",
+                collapsible = TRUE,
+                collapsed = TRUE,
+                width = 12,
+                type = 2,
+                color = "primary",
+                faq$respuesta[faq$id==4]
+              ),
+              widgetUserBox(
+                title = tags$h4(faq$pregunta[faq$id==5]),
+                boxToolSize = "md",
+                collapsible = TRUE,
+                collapsed = TRUE,
+                width = 12,
+                type = 2,
+                color = "primary",
+                faq$respuesta[faq$id==5]
+              ),
+              widgetUserBox(
+                title = tags$h4(faq$pregunta[faq$id==6]),
+                boxToolSize = "md",
+                collapsible = TRUE,
+                collapsed = TRUE,
+                width = 12,
+                type = 2,
+                color = "primary",
+                faq$respuesta[faq$id==6]
+              ),
+              widgetUserBox(
+                title = tags$h4(faq$pregunta[faq$id==7]),
+                boxToolSize = "md",
+                collapsible = TRUE,
+                collapsed = TRUE,
+                width = 12,
+                type = 2,
+                color = "primary",
+                faq$respuesta[faq$id==7]
+              ),
+              widgetUserBox(
+                title = tags$h4(faq$pregunta[faq$id==8]),
+                boxToolSize = "md",
+                collapsible = TRUE,
+                collapsed = TRUE,
+                width = 12,
+                type = 2,
+                color = "primary",
+                faq$respuesta[faq$id==8]
+              ),
+              widgetUserBox(
+                title = tags$h4(faq$pregunta[faq$id==9]),
+                boxToolSize = "md",
+                collapsible = TRUE,
+                collapsed = TRUE,
+                width = 12,
+                type = 2,
+                color = "primary",
+                faq$respuesta[faq$id==9]
+              ),
+              widgetUserBox(
+                title = tags$h4(faq$pregunta[faq$id==10]),
+                boxToolSize = "md",
+                collapsible = TRUE,
+                collapsed = TRUE,
+                width = 12,
+                type = 2,
+                color = "primary",
+                faq$respuesta[faq$id==10]
+              ),
+              widgetUserBox(
+                title = tags$h4(faq$pregunta[faq$id==11]),
+                boxToolSize = "md",
+                collapsible = TRUE,
+                collapsed = TRUE,
+                width = 12,
+                type = 2,
+                color = "primary",
+                faq$respuesta[faq$id==11]
+              ),
+              widgetUserBox(
+                title = tags$h4(faq$pregunta[faq$id==12]),
+                boxToolSize = "md",
+                collapsible = TRUE,
+                collapsed = TRUE,
+                width = 12,
+                type = 2,
+                color = "primary",
+                faq$respuesta[faq$id==12]
+              ),
+              widgetUserBox(
+                title = tags$h4(faq$pregunta[faq$id==13]),
+                boxToolSize = "md",
+                collapsible = TRUE,
+                collapsed = TRUE,
+                width = 12,
+                type = 2,
+                color = "primary",
+                faq$respuesta[faq$id==13]
+              ),
+              widgetUserBox(
+                title = tags$h4(faq$pregunta[faq$id==14]),
+                boxToolSize = "md",
+                collapsible = TRUE,
+                collapsed = TRUE,
+                width = 12,
+                type = 2,
+                color = "primary",
+                faq$respuesta[faq$id==14]
+              ),
+              widgetUserBox(
+                title = tags$h4(faq$pregunta[faq$id==15]),
+                boxToolSize = "md",
+                collapsible = TRUE,
+                collapsed = TRUE,
+                width = 12,
+                type = 2,
+                color = "primary",
+                faq$respuesta[faq$id==15]
               )
             ))
 ))
