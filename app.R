@@ -686,7 +686,7 @@ server <- function(input, output) {
                decimal.mark = ","),
         "%",
         "<br>",
-        "Principales productos al destino:",
+        "Part. de los principales productos al destino:",
         "<br>",
         format(round(mapa()$part_top_1, 1),
                decimal.mark = ","),
